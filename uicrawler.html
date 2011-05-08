@@ -1,0 +1,24 @@
+<html>
+<head><title>uicrawler test</title><script type="text/javascript" src="jquery-latest.js"></script><script type="text/javascript" src="uicrawler.js"></script></head>
+<body>
+	<h1>uicrawler test</h1>
+	<p>Testing area</p>
+	<p>linkName = <script type="text/javascript">document.writeln(linkHref(0))</script></p>
+	<p><a name="destination"/><a href="http://www.google.com">Google</a></p>
+	<h2>state</h2>
+	<pre><script type="text/javascript">document.writeln(state())</script></pre>
+	<h2 onclick="triggerAction(0, 0, 0)">trigger action</h2>
+	<p>the brown fox jumped over the hungry horse</p>
+	<h2 onclick="alert(followLink(0, 0))">follow link</h2>
+	<p>the brown fox jumped over the hungry horse</p>
+	<h2>stats</h2>
+	<pre><script type="text/javascript">document.writeln(stats(0))</script></pre>
+	<h2>exp</h2>
+	<pre><script type="text/javascript">nodeList(0)</script></pre>
+	<h2>title</h2>
+	<p><script type="text/javascript">document.writeln(document.title)</script></p>
+	<h2>nodename <a href="random.html">Random</a></h2>
+	<p><script type="text/javascript">document.writeln(nodeName(0))</script></p>
+	<p><a href="#top">Back to top</a></p>
+</body>
+</html>

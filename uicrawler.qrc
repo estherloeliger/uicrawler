@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>uicrawler.js</file>
+        <file>uicrawler.ico</file>
+        <file>jquery-latest.js</file>
+    </qresource>
+</RCC>

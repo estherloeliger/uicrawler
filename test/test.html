@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<html>
+  <head>
+    <title>Test home</title>
+    <script src="jquery-latest.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      $(document).ready(
+        function()
+        {
+          $('.hiddenLink').hide();
+
+//tbd: pick up event listeners that have been attached by jQuery
+          $('.click').click(function()
+          { 
+            document.location = "http://fsf.org";
+          });
+          $('.showOnMouseover').mouseover(function()
+          {
+            $('.hiddenLink').show();
+          });
+          $('.hideOnMouseover').mouseover(function()
+          {
+            $('.hiddenLink').hide();
+          });
+
+        }
+      );
+    </script>
+  </head>
+  <body>
+    <h1>Test home</h1>
+    <p>The quick brown fox jumps over the lazy dog.</p>
+    <h2>External link</h2>
+    <p>
+      <a href="https://launchpad.net/">Go to launchpad</a>
+    </p>
+    <h2>Local link</h2>
+    <p>
+      <a href="help1.html">Go to local help</a>
+    </p>
+    <h2>Email link</h2>
+    <p>
+      <a href="mailto:estherloeliger@users.sourceforge.net">Email the developer</a>
+    </p>
+    <h2>Form</h2>
+    <p>
+      <a href="contact.html">Contact page</a>
+    </p>
+    <h2>Action target: click</h2>
+    <div class="click">
+      <!--<p onclick="document.location = 'http://www.fsf.org';">Click here to trigger navigation to FSF.org</p>-->
+		<p>Click here to trigger navigation to FSF.org</p>
+    </div>
+    <h2>Action target: mouseover</h2>
+    <!--<p>Move mouse over <span class="showOnMouseover"><strong onmouseover="$('.hiddenLink').show();">this text</strong></span> to reveal hidden link; then mouse over <span class="hideOnMouseover"><strong onmouseover="$('.hiddenLink').hide()">this text</strong> to hide it again.</p>-->
+	<p>Move mouse over <span class="showOnMouseover"><strong>this text</strong></span> to reveal hidden link; then mouse over <span class="hideOnMouseover"><strong>this text</strong> to hide it again.</p>
+    <p>Hidden link: [<span class="hiddenLink"><a href="http://foundation.gnome.org/">Gnome Foundation</a></span>]</p>
+  </body>
+</html>
