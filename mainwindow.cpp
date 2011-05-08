@@ -98,24 +98,28 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     graphWidgetActions = new GraphWidget(this, "Action graph");
     graphWidgetActions->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    addDockWidget(Qt::RightDockWidgetArea, profileWidget);
     addDockWidget(Qt::RightDockWidgetArea, logWidget);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAffordances);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetActions);
+    addDockWidget(Qt::RightDockWidgetArea, profileWidget);
+
     addDockWidget(Qt::BottomDockWidgetArea, graphWidgetAffordances);
     addDockWidget(Qt::BottomDockWidgetArea, graphWidgetActions);
 
-    this->tabifyDockWidget(profileWidget, dotWidgetAffordances);
-    this->tabifyDockWidget(profileWidget, dotWidgetActions);
-    this->tabifyDockWidget(profileWidget, logWidget);
+    this->tabifyDockWidget(logWidget, dotWidgetAffordances);
+    this->tabifyDockWidget(logWidget, dotWidgetActions);
+    this->tabifyDockWidget(logWidget, profileWidget);
+    logWidget->raise();
 
     this->tabifyDockWidget(graphWidgetAffordances, graphWidgetActions);
+    graphWidgetAffordances->raise();
 
     setCentralWidget(view);
     setUnifiedTitleAndToolBarOnMac(true);
 
     this->setMinimumWidth(1024);
     this->setMinimumHeight(768);
+    locationEdit->setFocus();
 }
 
 void MainWindow::viewSource()
