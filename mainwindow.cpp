@@ -1,5 +1,3 @@
-//TEST TEST TEST
-
 #include <QtGui>
 #include <QtWebKit>
 #include <map>
