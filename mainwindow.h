@@ -26,6 +26,7 @@ protected slots:
     void adjustTitle();
     void setProgress(int p);
     void finishLoading(bool);
+    void onLoadFinished(bool);
 
     void viewSource();
     void slotSourceDownloaded();
@@ -51,7 +52,7 @@ private:
     ProfileWidget *profileWidget;
     int progress;
     Data data;
-    void wait(int timeout = 3);
+    void wait(bool strict = false, int timeout = 2);
     void runJs(const QString &code);
     int intFromJs(const QString &code);
     QString stringFromJs(const QString &code);

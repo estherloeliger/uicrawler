@@ -21,7 +21,8 @@ HEADERS  += mainwindow.h \
     graphwidget.h \
     data.h \
     arrow.h \
-    profilewidget.h
+    profilewidget.h \
+    state.h
 RESOURCES = uicrawler.qrc
 
 FORMS +=

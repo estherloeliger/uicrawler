@@ -5,6 +5,7 @@
 #include "logwidget.h"
 #include "graphwidget.h"
 #include "profilewidget.h"
+#include "state.h"
 #define MAX_STATE_COUNT 64;
 
 MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
@@ -36,11 +37,19 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     view = new QWebView(this);
+
+    QNetworkDiskCache *diskCache = new QNetworkDiskCache(this);
+    diskCache->setCacheDirectory(QDir::tempPath());
+    view->page()->networkAccessManager()->setCache(diskCache);
+
     view->load(url);
+    connect(view, SIGNAL(loadFinished(bool)), SLOT(onLoadFinished(bool)));
+    /*
     connect(view, SIGNAL(loadFinished(bool)), SLOT(adjustLocation()));
+    connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
+    */
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
-    connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
     connect(view, SIGNAL(loadStarted()), SLOT(setBusyFlag()));
 
     locationEdit = new QLineEdit(this);
@@ -122,6 +131,17 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     locationEdit->setFocus();
 }
 
+void MainWindow::onLoadFinished(bool b)
+{
+    if (!b)
+    {
+        qDebug() << "!onLoadFinished - " << view->url().toString();
+        wait(true);
+    }
+    adjustLocation();
+    finishLoading(b);
+}
+
 void MainWindow::viewSource()
 {
     QNetworkAccessManager* accessManager = view->page()->networkAccessManager();
@@ -156,9 +176,14 @@ void MainWindow::changeLocation()
 void MainWindow::adjustTitle()
 {
     if (progress <= 0 || progress >= 100)
+    {
         setWindowTitle("uicrawler - " + view->title());
+    }
     else
+    {
         setWindowTitle(QString("%1 (%2%)").arg(view->title()).arg(progress));
+        busy = true; // ensure not set to false too soon
+    }
 }
 
 void MainWindow::setProgress(int p)
@@ -210,15 +235,16 @@ void MainWindow::clearLogs()
     graphWidgetActions->clear();
 }
 
-void MainWindow::wait(int timeout)
+void MainWindow::wait(bool strict, int timeout)
 {
     QTime dieTime = QTime::currentTime().addSecs(timeout);
     while( QTime::currentTime() < dieTime )
     {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        if (!busy)
+        if (!busy && !strict)
             break;
     }
+    busy = false;
 }
 
 void MainWindow::goToFiles()
@@ -315,6 +341,9 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     stateTitle += truncateString(stringFromJs(code));
     stateTitle += "'";
 
+    data->affordanceStates.append(State(data->idCounter++, stateTitle, state));
+    data->actionStates.append(State(data->idCounter++, stateTitle, state));
+
     //keeping track of return url
     //if (!this->linkType(data->originalUrl, url) == LINK_EXTERNAL)
     if (linkType(data->originalUrl, url) != LINK_EXTERNAL)
@@ -327,9 +356,9 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     //arrows to known states
     if (data->states.contains(state))
     {
-        data->arrows.append(Arrow(parentStateId, data->states[state], arrowType, affordanceLabel));
+        data->affordances.append(Arrow(data->idCounter++, parentStateId, data->states[state], arrowType, affordanceLabel));
 
-        Arrow action(parentStateId, data->states[state], ARROW_TYPE_ACTION, actionLabel);
+        Arrow action(data->idCounter++, parentStateId, data->states[state], ARROW_TYPE_ACTION, actionLabel);
         if (!data->actions.contains(action))
         {
             data->actions.append(action);
@@ -353,9 +382,9 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         stateId = data->counter;
         data->states.insert(state, stateId);
         data->stateTitles.insert(stateId, stateTitle);
-        data->arrows.append(Arrow(parentStateId, stateId, arrowType, affordanceLabel));
+        data->affordances.append(Arrow(data->idCounter++, parentStateId, stateId, arrowType, affordanceLabel));
 
-        Arrow action(parentStateId, stateId, ARROW_TYPE_ACTION, actionLabel);
+        Arrow action(data->idCounter++, parentStateId, stateId, ARROW_TYPE_ACTION, actionLabel);
         if (!data->actions.contains(action))
         {
             data->actions.append(action);
@@ -431,7 +460,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
                 break;
             }
 
-            wait();
+            wait(true);
 
             affordanceLabel = triggerString(j);
             if (!nodeText.isEmpty())
@@ -534,7 +563,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         code += ")";
         logWidget->push(stringFromJs(code));
 
-        wait();
+        wait(false);
 
         arrowType = ARROW_TYPE_INIT;
         switch (linkType(url, linkHref))
@@ -592,14 +621,14 @@ void MainWindow::visualizeAffordances(const QString &filter)
     //states
     std::map<int, QString> states;
 
-    int size = data.arrows.count();
+    int size = data.affordances.count();
     for (int i = 1; i < size; i++) //omit initial state 0
     {
         QString source, target;
-        source = makeState(data.arrows.at(i).source, &data);
-        target = makeState(data.arrows.at(i).target, &data);
-        states.insert(std::make_pair(data.arrows.at(i).source, source));
-        states.insert(std::make_pair(data.arrows.at(i).target, target));
+        source = makeState(data.affordances.at(i).source, &data);
+        target = makeState(data.affordances.at(i).target, &data);
+        states.insert(std::make_pair(data.affordances.at(i).source, source));
+        states.insert(std::make_pair(data.affordances.at(i).target, target));
     }
 
     std::map<int, QString>::iterator it;
@@ -616,60 +645,60 @@ void MainWindow::visualizeAffordances(const QString &filter)
     }
 
     //arrows
-    size = data.arrows.count();
+    size = data.affordances.count();
     QString arrowLabel;
     int source, target;
     for (int i = 1; i < size; i++) //omit initial state 0
     {
-        source = data.arrows.at(i).source;
-        target = data.arrows.at(i).target;
+        source = data.affordances.at(i).source;
+        target = data.affordances.at(i).target;
 
         if (!filter.isEmpty() && (!filteredSet.contains(source) || !filteredSet.contains(target)))
             continue;
 
         QString arrow;
-        arrow = QString::number(data.arrows.at(i).source);
+        arrow = QString::number(data.affordances.at(i).source);
         arrow += " -> ";
-        arrow += QString::number(data.arrows.at(i).target);
+        arrow += QString::number(data.affordances.at(i).target);
         arrow += " [label=\"";
 
-        arrowLabel = data.arrows.at(i).label;
+        arrowLabel = data.affordances.at(i).label;
         arrowLabel = arrowLabel.replace("\n", "");
         arrowLabel = arrowLabel.replace("\r", "");
         arrowLabel = arrowLabel.replace("\t", " ");
         arrow += arrowLabel;
 
         QString arrowColor, arrowStyle;
-        int arrowType = data.arrows.at(i).type;
+        int arrowType = data.affordances.at(i).type;
         switch(arrowType)
         {
         case ARROW_TYPE_EVENT_CLICK:
             arrowColor = "firebrick2";
-            arrowStyle = "normal";
+            arrowStyle = "solid";
             break;
         case ARROW_TYPE_EVENT_MOUSEOVER:
             arrowColor = "gold";
-            arrowStyle = "normal";
+            arrowStyle = "solid";
             break;
         case ARROW_TYPE_EVENT_SUBMIT:
             arrowColor = "chocolate";
-            arrowStyle = "normal";
+            arrowStyle = "solid";
             break;
         case ARROW_TYPE_LINK_EXTERNAL:
             arrowColor = "dodgerblue3";
-            arrowStyle = "dotted";
+            arrowStyle = "dashed";
             break;
         case ARROW_TYPE_LINK_SAME_HOST:
             arrowColor = "dodgerblue4";
-            arrowStyle = "normal";
+            arrowStyle = "solid";
             break;
         case ARROW_TYPE_LINK_FRAGMENT:
             arrowColor = "dogerblue4";
-            arrowStyle = "normal";
+            arrowStyle = "solid";
             break;
         default:
             arrowColor = "black";
-            arrowStyle = "normal";
+            arrowStyle = "dotted";
             break;
         }
         arrow += "\", color=\"" + arrowColor + "\", style=\"" + arrowStyle;
@@ -803,7 +832,7 @@ void MainWindow::navigate(const QString &url)
     code += url;
     code += "'";
     view->page()->mainFrame()->evaluateJavaScript(code);
-    wait();
+    wait(false);
 }
 
 QString MainWindow::triggerString(int trigger)
