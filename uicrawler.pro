@@ -6,6 +6,10 @@
 
 QT       += webkit network core gui
 
+#test
+CONFIG  += webkit phonon
+#end test
+
 TARGET = uicrawler
 TEMPLATE = app
 
@@ -14,7 +18,8 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     logwidget.cpp \
     graphwidget.cpp \
-    profilewidget.cpp
+    profilewidget.cpp \
+    filterwidget.cpp
 
 HEADERS  += mainwindow.h \
     logwidget.h \
@@ -22,7 +27,8 @@ HEADERS  += mainwindow.h \
     data.h \
     arrow.h \
     profilewidget.h \
-    state.h
+    state.h \
+    filterwidget.h
 RESOURCES = uicrawler.qrc
 
 FORMS +=

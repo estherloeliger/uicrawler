@@ -13,7 +13,8 @@ public:
     QString label;
     bool operator== ( const Arrow& a ) const
     {
-            return ( ( a.id == id ) &&
+            return (
+                     //( a.id == id ) &&
                      ( a.source == source ) &&
                      ( a.target == target ) &&
                      ( a.type == type ) &&

@@ -6,7 +6,7 @@ ProfileWidget::ProfileWidget(QWidget *parent, const QString &title) :
 {
     list = new QListWidget(this);
     list->addItem("Default");
-    list->addItem("Limited fine motor skills");
+    list->addItem("WAI-ARIA");
     list->setCurrentRow(0);
     this->setWidget(list);
 }

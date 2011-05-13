@@ -7,6 +7,7 @@ class QLineEdit;
 class LogWidget;
 class GraphWidget;
 class ProfileWidget;
+class FilterWidget;
 
 #include "data.h"
 #include "arrow.h"
@@ -49,10 +50,11 @@ private:
     QAction *rotateAction;
     LogWidget *logWidget, *dotWidgetAffordances, *dotWidgetActions;
     GraphWidget *graphWidgetAffordances, *graphWidgetActions;
+    FilterWidget *filterWidget;
     ProfileWidget *profileWidget;
     int progress;
     Data data;
-    void wait(bool strict = false, int timeout = 2);
+    void wait(bool force = false, int timeout = 2);
     void runJs(const QString &code);
     int intFromJs(const QString &code);
     QString stringFromJs(const QString &code);
@@ -68,7 +70,8 @@ private:
     QString triggerString(int trigger);
     QHash<int, QString> nodeNames, linkNames;
     QString makeState(int i, Data *data);
-    int linkType(const QString &current, const QString &href);
+    int linkType(const QString &original, const QString &href);
+    bool locationInScope(const QString &currentLocation, const QString &original);
     QString linkLabel(const QString &current, const QString &href);
     QString truncateString(const QString &s);
 
@@ -77,8 +80,11 @@ private:
 
 enum triggers {
     TRIGGER_CLICK = 0,
+    TRIGGER_MOUSEDOWN,
+    TRIGGER_MOUSEUP,
     TRIGGER_MOUSEOVER,
     TRIGGER_SUBMIT,
+    TRIGGER_ARIA,
     TRIGGER_LINK,
     TRIGGER_INIT
 };
@@ -92,8 +98,11 @@ enum linkTypes {
 
 enum arrowTypes {
     ARROW_TYPE_EVENT_CLICK = 0,
+    ARROW_TYPE_EVENT_MOUSEDOWN,
+    ARROW_TYPE_EVENT_MOUSEUP,
     ARROW_TYPE_EVENT_MOUSEOVER,
     ARROW_TYPE_EVENT_SUBMIT,
+    ARROW_TYPE_EVENT_ARIA,
     ARROW_TYPE_LINK_EXTERNAL,
     ARROW_TYPE_LINK_SAME_HOST,
     ARROW_TYPE_LINK_FRAGMENT,

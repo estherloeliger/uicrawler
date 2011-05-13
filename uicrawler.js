@@ -38,11 +38,15 @@ function nodeList(intProfile)
 
         //skip if no listeners
         var hasListener = 0;
+        var isAria = 0;
 
+        //JQuery
         var events = $(node).data("events");
         if (
                 events != null &&
                 (events.click != null ||
+                 events.mousedown != null ||
+                 events.mouseup != null ||
                  events.mouseover != null ||
                  events.submit != null)
            )
@@ -50,8 +54,11 @@ function nodeList(intProfile)
             hasListener = 1;
         }
 
+        //on... listeners
         if (
             node.onclick != null ||
+            node.onmousedown != null ||
+            node.onmouseup != null ||
             node.onmouseover != null ||
             node.onsubmit != null
         )
@@ -59,13 +66,21 @@ function nodeList(intProfile)
             hasListener = 1;
         }
 
+        //aria-label elements
+        if (node.getAttribute("aria-label") != null ||
+            node.getAttribute("aria-labelledby") != null)
+        {
+            hasListener = 1;
+            isAria = 1;
+        }
+
         if (hasListener == 0)
         {
             continue;
         }
 
-        //skip if PROFILE_FINE_MOTOR and below cutoff
-        if (profile == 1 && (node.width < 100 || node.height < 100))
+        //skip if PROFILE_WAI_ARIA and below cutoff
+        if (profile == 1 && isAria == 0)
         {
             continue;
         }
@@ -83,6 +98,19 @@ function nodeText(intVal, intProfile)
     var nodes = nodeList(profile);
     if (i >= nodes.length)
         return '';
+
+    var node = nodes[i];
+
+    if (node.getAttribute("aria-label") != null)
+    {
+        return node.getAttribute("aria-label");
+    }
+
+    if (node.getAttribute("aria-labelledby") != null)
+    {
+        return node.getAttribute("aria-labelledby");
+    }
+
     return nodes[i].textContent;
 }
 
@@ -149,6 +177,7 @@ function hyperlinkList(intProfile)
     for (var i = 0; i < anchors.length; i++)
     {
         var anchor = anchors[i];
+        var isAria = 0;
 
         //skip if invisible
         if (
@@ -159,14 +188,24 @@ function hyperlinkList(intProfile)
             continue;
         }
 
+        if (
+            anchor.getAttribute("aria-label") != null ||
+            anchor.getAttribute("aria-labelledby") != null)
+        {
+            isAria = 1;
+        }
+
         var href = anchor.getAttribute('href');
 
         //check href present
         if (href == null)
             continue;
 
-        if (profile == 1 && (anchor.width < 100 || anchor.height < 100))
+        //skip if PROFILE_WAI_ARIA and below cutoff
+        if (profile == 1 && isAria == 0)
+        {
             continue;
+        }
 
         list.push(anchor);
     }
@@ -181,6 +220,10 @@ function state(intProfile)
     s = "===state===\n";
     s += "title ";
     s += document.title;
+    s += "\n";
+
+    s += "url ";
+    s += document.location.href;
     s += "\n";
 
     var listenerCount = 0;
@@ -229,6 +272,33 @@ function state(intProfile)
             s += str.replace(/\n/g, " ");
             s += "\n";
         }
+
+        if (node.getAttribute("aria-label") != null)
+        {
+            ariaLabel = node.getAttribute("aria-label");
+            listenerCount++;
+            s += "element #";
+            s += i + 1;
+            s += " ";
+            s += node.localName;
+            s += " aria-label: ";
+            s += ariaLabel;
+            s += "\n";
+        }
+
+        if (node.getAttribute("aria-labelledby") != null)
+        {
+            ariaLabel = node.getAttribute("aria-labelledby");
+            listenerCount++;
+            s += "element #";
+            s += i + 1;
+            s += " ";
+            s += node.localName;
+            s += " aria-labelledby: ";
+            s += ariaLabel;
+            s += "\n";
+        }
+
     }
 
     if (listenerCount == 0)
@@ -286,8 +356,11 @@ function triggerAction(intValListener, intValIndex, intProfile)
     var node = nodes[index];
 
     var hasClickListener = 0;
+    var hasMousedownListener = 0;
+    var hasMouseupListener = 0;
     var hasMouseoverListener = 0;
     var hasSubmitListener = 0;
+    var hasAriaListener = 0;
 
     //check for JQuery event listeners
     var events = $(node).data("events");
@@ -296,6 +369,16 @@ function triggerAction(intValListener, intValIndex, intProfile)
         if (events.click != null)
         {
             hasClickListener = 1;
+        }
+
+        if (events.mousedown != null)
+        {
+            hasMousedownListener = 1;
+        }
+
+        if (events.mouseup != null)
+        {
+            hasMouseupListener = 1;
         }
 
         if (events.mouseover != null)
@@ -313,18 +396,44 @@ function triggerAction(intValListener, intValIndex, intProfile)
     if (listener == Listener.OnClick && node.onclick != null)
         hasClickListener = 1;
 
+    if (listener == Listener.OnMousedown && node.onmousedown != null)
+        hasMousedownListener = 1;
+
+    if (listener == Listener.OnMouseup && node.onmouseup != null)
+        hasMouseupListener = 1;
+
     if (listener == Listener.OnMouseover && node.onmouseover != null)
         hasMouseoverListener = 1;
 
     if (listener == Listener.OnSubmit && node.onsubmit != null)
         hasSubmitListener = 1;
 
+    if (listener == Listener.OnAria &&
+            (node.getAttribute("aria-label") != null ||
+             node.getAttribute("aria-labelledby") != null))
+        hasAriaListener = 1;
+
+    //only dispatch if both conditions met
     if (listener == Listener.OnClick && hasClickListener == 1)
     {
         var event = document.createEvent("MouseEvents");
         event.initEvent("click", true, true);
         node.dispatchEvent(event);
         return "===fired click event===\n";
+    }
+    else if (listener == Listener.OnMousedown && hasMousedownListener == 1)
+    {
+        var event = document.createEvent("MouseEvents");
+        event.initEvent("mousedown", true, true);
+        node.dispatchEvent(event);
+        return "===fired mousedown event===\n";
+    }
+    else if (listener == Listener.OnMouseup && hasMouseupListener == 1)
+    {
+        var event = document.createEvent("MouseEvents");
+        event.initEvent("mouseup", true, true);
+        node.dispatchEvent(event);
+        return "===fired mouseup event===\n";
     }
     else if (listener == Listener.OnMouseover && hasMouseoverListener == 1)
     {
@@ -339,6 +448,13 @@ function triggerAction(intValListener, intValIndex, intProfile)
         event.initEvent("submit", true, true);
         node.dispatchEvent(event);
         return "===fired submit event===\n";
+    }
+    else if (listener == Listener.OnAria && hasAriaListener == 1)
+    {
+        var event = document.createEvent("MouseEvents");
+        event.initEvent("click", true, true);
+        node.dispatchEvent(event);
+        return "===fired click event (ARIA)===\n";
     }
 
     return '';
@@ -387,6 +503,9 @@ function authorityFromUri(str)
 var Listener =
 {
     OnClick:0,
-    OnMouseover:1,
-    OnSubmit:2
+    OnMousedown:1,
+    onMouseup:2,
+    OnMouseover:3,
+    OnSubmit:4,
+    OnAria:5
 }

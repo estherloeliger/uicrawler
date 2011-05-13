@@ -5,6 +5,7 @@
 #include "logwidget.h"
 #include "graphwidget.h"
 #include "profilewidget.h"
+#include "filterwidget.h"
 #include "state.h"
 #define MAX_STATE_COUNT 64;
 
@@ -44,10 +45,6 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
 
     view->load(url);
     connect(view, SIGNAL(loadFinished(bool)), SLOT(onLoadFinished(bool)));
-    /*
-    connect(view, SIGNAL(loadFinished(bool)), SLOT(adjustLocation()));
-    connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
-    */
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
     connect(view, SIGNAL(loadStarted()), SLOT(setBusyFlag()));
@@ -89,6 +86,9 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     toolsMenu->addAction("Stop", this, SLOT(stop()));
     toolsMenu->addAction("Clear", this, SLOT(clearLogs()));
 
+    filterWidget = new FilterWidget(this, "Filter");
+    filterWidget->setAllowedAreas(Qt::RightDockWidgetArea);
+
     profileWidget = new ProfileWidget(this);
     profileWidget->setAllowedAreas(Qt::RightDockWidgetArea);
 
@@ -107,6 +107,8 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     graphWidgetActions = new GraphWidget(this, "Action graph");
     graphWidgetActions->setAllowedAreas(Qt::RightDockWidgetArea);
 
+    addDockWidget(Qt::RightDockWidgetArea, filterWidget);
+
     addDockWidget(Qt::RightDockWidgetArea, logWidget);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAffordances);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetActions);
@@ -117,6 +119,7 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
 
     this->tabifyDockWidget(logWidget, dotWidgetAffordances);
     this->tabifyDockWidget(logWidget, dotWidgetActions);
+    this->tabifyDockWidget(logWidget, filterWidget);
     this->tabifyDockWidget(logWidget, profileWidget);
     logWidget->raise();
 
@@ -135,8 +138,7 @@ void MainWindow::onLoadFinished(bool b)
 {
     if (!b)
     {
-        qDebug() << "!onLoadFinished - " << view->url().toString();
-        wait(true);
+        return;
     }
     adjustLocation();
     finishLoading(b);
@@ -182,13 +184,11 @@ void MainWindow::adjustTitle()
     else
     {
         setWindowTitle(QString("%1 (%2%)").arg(view->title()).arg(progress));
-        busy = true; // ensure not set to false too soon
     }
 }
 
 void MainWindow::setProgress(int p)
 {
-    busy = true;
     progress = p;
     adjustTitle();
 }
@@ -235,13 +235,13 @@ void MainWindow::clearLogs()
     graphWidgetActions->clear();
 }
 
-void MainWindow::wait(bool strict, int timeout)
+void MainWindow::wait(bool force, int timeout)
 {
     QTime dieTime = QTime::currentTime().addSecs(timeout);
     while( QTime::currentTime() < dieTime )
     {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        if (!busy && !strict)
+        if (!busy && !force)
             break;
     }
     busy = false;
@@ -344,11 +344,12 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     data->affordanceStates.append(State(data->idCounter++, stateTitle, state));
     data->actionStates.append(State(data->idCounter++, stateTitle, state));
 
-    //keeping track of return url
-    //if (!this->linkType(data->originalUrl, url) == LINK_EXTERNAL)
-    if (linkType(data->originalUrl, url) != LINK_EXTERNAL)
+    //keeping track of lastLocalUrl
+    if (linkType(data->originalUrl, url) != LINK_EXTERNAL &&
+        locationInScope(locationEdit->text(), data->originalUrl))
     {
         data->lastLocalUrl = url;
+        qDebug() << "lastLocalUrl = " << url;
     }
 
     int stateId = 0;
@@ -364,9 +365,11 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
             data->actions.append(action);
         }
 
-        if (this->linkType(data->originalUrl, url) == LINK_EXTERNAL)
+        if (
+            linkType(data->originalUrl, url) == LINK_EXTERNAL ||
+            !locationInScope(locationEdit->text(), data->originalUrl))
         {
-            QString log = "===transported to external website ";
+            QString log = "===transported to out-of-scope address ";
             log += url;
             log += "; returning to ";
             log += data->lastLocalUrl;
@@ -390,9 +393,10 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
             data->actions.append(action);
         }
 
-        if (this->linkType(data->originalUrl, url) == LINK_EXTERNAL)
+        if (this->linkType(data->originalUrl, url) == LINK_EXTERNAL ||
+            !locationInScope(locationEdit->text(), data->originalUrl))
         {
-            QString log = "===transported to external website ";
+            QString log = "===transported to out-of-scope address ";
             log += url;
             log += "; returning to ";
             log += data->lastLocalUrl;
@@ -484,17 +488,27 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
             case TRIGGER_CLICK:
                 arrowType = ARROW_TYPE_EVENT_CLICK;
                 break;
+            case TRIGGER_MOUSEDOWN:
+                arrowType = ARROW_TYPE_EVENT_MOUSEDOWN;
+                break;
+            case TRIGGER_MOUSEUP:
+                arrowType = ARROW_TYPE_EVENT_MOUSEUP;
+                break;
             case TRIGGER_MOUSEOVER:
                 arrowType = ARROW_TYPE_EVENT_MOUSEOVER;
                 break;
             case TRIGGER_SUBMIT:
                 arrowType = ARROW_TYPE_EVENT_SUBMIT;
                 break;
+            case TRIGGER_ARIA:
+                arrowType = ARROW_TYPE_EVENT_ARIA;
+                break;
             }
 
             recurse(
                 data,
-                view->url().toString(),
+                //view->url().toString(),
+                this->locationEdit->text(),
                 affordanceLabel,
                 actionLabel,
                 stateId,
@@ -582,7 +596,8 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
 
         recurse(
             data,
-            view->url().toString(),
+            //view->url().toString(),
+            this->locationEdit->text(),
             affordanceLabel,
             actionLabel,
             stateId,
@@ -676,12 +691,24 @@ void MainWindow::visualizeAffordances(const QString &filter)
             arrowColor = "firebrick2";
             arrowStyle = "solid";
             break;
+        case ARROW_TYPE_EVENT_MOUSEDOWN:
+            arrowColor = "firebrick2";
+            arrowStyle = "solid";
+            break;
+        case ARROW_TYPE_EVENT_MOUSEUP:
+            arrowColor = "firebrick2";
+            arrowStyle = "solid";
+            break;
         case ARROW_TYPE_EVENT_MOUSEOVER:
             arrowColor = "gold";
             arrowStyle = "solid";
             break;
         case ARROW_TYPE_EVENT_SUBMIT:
             arrowColor = "chocolate";
+            arrowStyle = "solid";
+            break;
+        case ARROW_TYPE_EVENT_ARIA:
+            arrowColor = "firebrick2";
             arrowStyle = "solid";
             break;
         case ARROW_TYPE_LINK_EXTERNAL:
@@ -693,7 +720,7 @@ void MainWindow::visualizeAffordances(const QString &filter)
             arrowStyle = "solid";
             break;
         case ARROW_TYPE_LINK_FRAGMENT:
-            arrowColor = "dogerblue4";
+            arrowColor = "dodgerblue4";
             arrowStyle = "solid";
             break;
         default:
@@ -827,6 +854,15 @@ int MainWindow::intFromJs(const QString &code)
 
 void MainWindow::navigate(const QString &url)
 {
+    //don't open media files
+    if (url.endsWith(".mp3") ||
+        url.endsWith(".mp4") ||
+        url.endsWith(".flv") ||
+        url.endsWith(".pdf") ||
+        url.contains("mailto:"))
+    {
+        return;
+    }
     QString code = "window.location = ";
     code += "'";
     code += url;
@@ -842,11 +878,20 @@ QString MainWindow::triggerString(int trigger)
     case TRIGGER_CLICK:
         return "click";
         break;
+    case TRIGGER_MOUSEDOWN:
+        return "mousedown";
+        break;
+    case TRIGGER_MOUSEUP:
+        return "mouseup";
+        break;
     case TRIGGER_MOUSEOVER:
         return "mouseover";
         break;
     case TRIGGER_SUBMIT:
         return "submit";
+        break;
+    case TRIGGER_ARIA:
+        return "aria";
         break;
     case TRIGGER_LINK:
         return "link";
@@ -911,7 +956,7 @@ QString MainWindow::linkLabel(const QString &current, const QString &href)
     }
 }
 
-int MainWindow::linkType(const QString &current, const QString &href)
+int MainWindow::linkType(const QString &original, const QString &href)
 {
     //internal link
     if (href.startsWith('#'))
@@ -926,7 +971,7 @@ int MainWindow::linkType(const QString &current, const QString &href)
         return LINK_RELATIVE;
     }
 
-    QUrl currentUrl(current);
+    QUrl currentUrl(original);
     QString currentHost, hrefHost, hrefPath;
     currentHost = currentUrl.host();
     hrefHost = hrefUrl.host();
@@ -940,6 +985,11 @@ int MainWindow::linkType(const QString &current, const QString &href)
 
     //external link
     return LINK_EXTERNAL;
+}
+
+bool MainWindow::locationInScope(const QString &currentLocation, const QString &original)
+{
+    return currentLocation.startsWith(original);
 }
 
 QString MainWindow::truncateString(const QString &s)
