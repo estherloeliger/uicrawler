@@ -9,6 +9,8 @@ class GraphWidget;
 class ProfileWidget;
 class FilterWidget;
 
+#include <QSet>
+#include <QSettings>
 #include "data.h"
 #include "arrow.h"
 
@@ -18,7 +20,12 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(const QUrl& url);
-    ~MainWindow() { };
+    ~MainWindow();
+
+public slots:
+    void visualizeAffordances(const QString &filter = "");
+    void visualizeActions(const QString &filter = "");
+    void refreshMapping();
 
 protected slots:
 
@@ -26,39 +33,50 @@ protected slots:
     void changeLocation();
     void adjustTitle();
     void setProgress(int p);
-    void finishLoading(bool);
     void onLoadFinished(bool);
 
     void viewSource();
     void slotSourceDownloaded();
 
+    void open();
+    void save();
+
     void state();
     void clearLogs();
     void stats();
     void model();
+    void draw();
     void goToFiles();
     void setBusyFlag();
-    void openFilterDialog();
+    void openBlacklistDialog();
     void stop();
-    void visualizeAffordances(const QString &filter = "");
-    void visualizeActions(const QString &filter = "");
+
+    //bookmark slots
+    void bookmarkIbis() { navigate("http://www.ibisreader.com/library/view/Alice's+Adventures+in+Wonderland/43239/cover.xml?first_item=1"); }
+    void bookmarkTwenty() { navigate("http://www.20thingsilearned.com/foreword"); }
+    void bookmarkBooks() { navigate("http://books.google.com/ebooks/reader?id=ey8EAAAAQAAJ&printsec=frontcover&output=reader&pg=GBS.PP1.w.1.0.0"); }
+    void bookmarkFree() { navigate("http://www.fsf.org"); }
+    void bookmarkTest() { navigate("http://team.sourceforge.net/test.html"); }
 
 private:
-    QString jQuery, uicrawler; //JS libraries
+    QString jQuery, sha1, uicrawler; //JS libraries
+    QString blacklistString;
+    QSet<QString> blacklist;
+    void updateBlacklist();
     QWebView *view;
     QLineEdit *locationEdit;
+    QSettings *settings;
     QAction *rotateAction;
-    LogWidget *logWidget, *dotWidgetAffordances, *dotWidgetActions;
-    GraphWidget *graphWidgetAffordances, *graphWidgetActions;
+    LogWidget *logWidget, *dotWidgetAffordances, *dotWidgetActions, *dotWidgetMapping, *dotWidgetPullback;
+    GraphWidget *graphWidgetAffordances, *graphWidgetActions, *graphWidgetPullback;
     FilterWidget *filterWidget;
     ProfileWidget *profileWidget;
     int progress;
     Data data;
-    void wait(bool force = false, int timeout = 2);
+    void wait(bool force = false, int timeout = 1);
     void runJs(const QString &code);
     int intFromJs(const QString &code);
     QString stringFromJs(const QString &code);
-    void navigate(const QString &url);
     void recurse(
         Data *data,
         const QString &url,
@@ -67,7 +85,12 @@ private:
         int parentStateId,
         int arrowType,
         int profile);
+    void navigate(const QString &url);
     QString triggerString(int trigger);
+
+    QString machineState();
+    void setMachineState(const QString &s);
+
     QHash<int, QString> nodeNames, linkNames;
     QString makeState(int i, Data *data);
     int linkType(const QString &original, const QString &href);

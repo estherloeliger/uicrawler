@@ -1,5 +1,6 @@
 #include <QtGui>
 #include <QtWebKit>
+#include <QRegExp>
 #include <map>
 #include "mainwindow.h"
 #include "logwidget.h"
@@ -11,6 +12,15 @@
 
 MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
 {
+    QCoreApplication::setOrganizationName("laika57");
+    QCoreApplication::setOrganizationDomain("https://github.com/laika57/uicrawler");
+    QCoreApplication::setApplicationName("uicrawler");
+
+    settings = new QSettings();
+
+    blacklistString = settings->value("blacklistString", "default").toString();
+    updateBlacklist();
+
     progress = 0;
 
     this->setWindowIcon(QIcon(":/uicrawler.ico"));
@@ -21,8 +31,13 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     jQuery = file.readAll();
     file.close();
 
-    QFile fileUic;
+    QFile fileSha1;
+    fileSha1.setFileName(":/sha1.js");
+    fileSha1.open(QIODevice::ReadOnly);
+    sha1 = fileSha1.readAll();
+    fileSha1.close();
 
+    QFile fileUic;
     //tbd: use resource when code is more or less ready
     //fileUic.setFileName(":/uicrawler.js");
 #ifdef Q_WS_WIN
@@ -39,9 +54,16 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
 
     view = new QWebView(this);
 
+    QWebSettings *webSettings = view->page()->settings();
+    webSettings->setAttribute(QWebSettings::AutoLoadImages, false);
+
     QNetworkDiskCache *diskCache = new QNetworkDiskCache(this);
     diskCache->setCacheDirectory(QDir::tempPath());
     view->page()->networkAccessManager()->setCache(diskCache);
+
+    QNetworkConfigurationManager configManager;
+    QNetworkConfiguration config = configManager.defaultConfiguration();
+    view->page()->networkAccessManager()->setConfiguration(config);
 
     view->load(url);
     connect(view, SIGNAL(loadFinished(bool)), SLOT(onLoadFinished(bool)));
@@ -61,27 +83,38 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     toolBar->addWidget(locationEdit);
 
     toolBar->addAction("Model", this, SLOT(model()));
+    toolBar->addAction("Draw", this, SLOT(draw()));
     toolBar->addSeparator();
     toolBar->addAction("Stats", this, SLOT(stats()));
     toolBar->addAction("State", this, SLOT(state()));
-    toolBar->addSeparator();
-    toolBar->addAction("Filter...", this, SLOT(openFilterDialog()));
     toolBar->addSeparator();
     toolBar->addAction("Stop", this, SLOT(stop()));
     toolBar->addAction("Clear", this, SLOT(clearLogs()));
 
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
-    fileMenu->addAction("Go to files", this, SLOT(goToFiles()));
+    fileMenu->addAction("Open...", this, SLOT(open()));
+    fileMenu->addAction("Save As...", this, SLOT(save()));
+    fileMenu->addAction("Go to Files", this, SLOT(goToFiles()));
+    fileMenu->addAction("Edit Blacklist...", this, SLOT(openBlacklistDialog()));
+    fileMenu->addSeparator();
+    fileMenu->addAction("Quit", this, SLOT(close()));
 
     //tbd
 
+    QMenu *bookmarksMenu = menuBar()->addMenu(tr("&Bookmarks"));
+
+    bookmarksMenu->addAction("20 Things", this, SLOT(bookmarkTwenty()));
+    bookmarksMenu->addAction("Google Books", this, SLOT(bookmarkBooks()));
+    bookmarksMenu->addAction("Ibis Reader", this, SLOT(bookmarkIbis()));
+    bookmarksMenu->addAction("Free Software Foundation", this, SLOT(bookmarkFree()));
+    bookmarksMenu->addAction("Test", this, SLOT(bookmarkTest()));
+
     QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
     toolsMenu->addAction("Model", this, SLOT(model()));
+    toolsMenu->addAction("Draw", this, SLOT(draw()));
     toolsMenu->addSeparator();
     toolsMenu->addAction("Stats", this, SLOT(stats()));
     toolsMenu->addAction("State", this, SLOT(state()));
-    toolsMenu->addSeparator();
-    toolsMenu->addAction("Filter...", this, SLOT(openFilterDialog()));
     toolsMenu->addSeparator();
     toolsMenu->addAction("Stop", this, SLOT(stop()));
     toolsMenu->addAction("Clear", this, SLOT(clearLogs()));
@@ -101,29 +134,44 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     dotWidgetActions = new LogWidget(this, "Actions");
     dotWidgetActions->setAllowedAreas(Qt::RightDockWidgetArea);
 
+    dotWidgetMapping = new LogWidget(this, "Mapping");
+    dotWidgetMapping->setAllowedAreas(Qt::RightDockWidgetArea);
+
+    dotWidgetPullback = new LogWidget(this, "Pullback");
+    dotWidgetPullback->setAllowedAreas(Qt::RightDockWidgetArea);
+
     graphWidgetAffordances = new GraphWidget(this, "Affordance graph");
-    graphWidgetAffordances->setAllowedAreas(Qt::RightDockWidgetArea);
+    graphWidgetAffordances->setAllowedAreas(Qt::BottomDockWidgetArea);
 
     graphWidgetActions = new GraphWidget(this, "Action graph");
-    graphWidgetActions->setAllowedAreas(Qt::RightDockWidgetArea);
+    graphWidgetActions->setAllowedAreas(Qt::BottomDockWidgetArea);
+
+    graphWidgetPullback = new GraphWidget(this, "Pullback graph");
+    graphWidgetPullback->setAllowedAreas(Qt::BottomDockWidgetArea);
 
     addDockWidget(Qt::RightDockWidgetArea, filterWidget);
 
     addDockWidget(Qt::RightDockWidgetArea, logWidget);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAffordances);
-    addDockWidget(Qt::RightDockWidgetArea, dotWidgetActions);
+    addDockWidget(Qt::RightDockWidgetArea, dotWidgetActions);    
+    addDockWidget(Qt::RightDockWidgetArea, dotWidgetMapping);
+    addDockWidget(Qt::RightDockWidgetArea, dotWidgetPullback);
     addDockWidget(Qt::RightDockWidgetArea, profileWidget);
 
     addDockWidget(Qt::BottomDockWidgetArea, graphWidgetAffordances);
     addDockWidget(Qt::BottomDockWidgetArea, graphWidgetActions);
+    addDockWidget(Qt::BottomDockWidgetArea, graphWidgetPullback);
 
     this->tabifyDockWidget(logWidget, dotWidgetAffordances);
     this->tabifyDockWidget(logWidget, dotWidgetActions);
+    this->tabifyDockWidget(logWidget, dotWidgetMapping);
+    this->tabifyDockWidget(logWidget, dotWidgetPullback);
     this->tabifyDockWidget(logWidget, filterWidget);
     this->tabifyDockWidget(logWidget, profileWidget);
     logWidget->raise();
 
     this->tabifyDockWidget(graphWidgetAffordances, graphWidgetActions);
+    this->tabifyDockWidget(graphWidgetAffordances, graphWidgetPullback);
     graphWidgetAffordances->raise();
 
     setCentralWidget(view);
@@ -134,14 +182,29 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     locationEdit->setFocus();
 }
 
+MainWindow::~MainWindow()
+{
+    QVariant blacklistStringVariant(blacklistString);
+    settings->setValue("blacklistString", blacklistStringVariant);
+    delete settings;
+}
+
+
 void MainWindow::onLoadFinished(bool b)
 {
     if (!b)
     {
-        return;
+        qDebug() << "MainWindow::onLoadFinished(false)";
+
+        return; //needed to prevent crash on failed load
     }
+    busy = false;
+    progress = 100;
+    view->page()->mainFrame()->evaluateJavaScript(jQuery);
+    //view->page()->mainFrame()->evaluateJavaScript(sha1);
+    view->page()->mainFrame()->evaluateJavaScript(uicrawler);
     adjustLocation();
-    finishLoading(b);
+    adjustTitle();
 }
 
 void MainWindow::viewSource()
@@ -179,7 +242,14 @@ void MainWindow::adjustTitle()
 {
     if (progress <= 0 || progress >= 100)
     {
-        setWindowTitle("uicrawler - " + view->title());
+        if (view->title().isEmpty())
+        {
+            setWindowTitle("uicrawler");
+        }
+        else
+        {
+            setWindowTitle("uicrawler - " + view->title());
+        }
     }
     else
     {
@@ -193,15 +263,6 @@ void MainWindow::setProgress(int p)
     adjustTitle();
 }
 
-void MainWindow::finishLoading(bool)
-{
-    busy = false;
-    progress = 100;
-    adjustTitle();
-    view->page()->mainFrame()->evaluateJavaScript(jQuery);
-    view->page()->mainFrame()->evaluateJavaScript(uicrawler);
-}
-
 void MainWindow::state()
 {
     int profile = profileWidget->row();
@@ -212,6 +273,7 @@ void MainWindow::state()
     code += ")";
 
     logWidget->push(stringFromJs(code));
+    logWidget->raise();
 }
 
 void MainWindow::stats()
@@ -224,6 +286,7 @@ void MainWindow::stats()
     code += ")";
 
     logWidget->push(stringFromJs(code));
+    logWidget->raise();
 }
 
 void MainWindow::clearLogs()
@@ -244,7 +307,21 @@ void MainWindow::wait(bool force, int timeout)
         if (!busy && !force)
             break;
     }
-    busy = false;
+
+    //fall-back: timeout if busy == true still
+    if (busy)
+    {
+        qDebug() << "Extended waiting period...";
+        dieTime = QTime::currentTime().addSecs(10);
+        while ( QTime::currentTime() < dieTime )
+        {
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+            if (!busy)
+                break;
+        }
+    }
+
+    busy = false; //override in case onFinished has not signalled success
 }
 
 void MainWindow::goToFiles()
@@ -267,6 +344,7 @@ void MainWindow::model()
     stopFlag = false;
     data.originalUrl = data.lastLocalUrl = url;
 
+    logWidget->raise();
     logWidget->push("=== model ===\n");
 
     int profile = profileWidget->row();
@@ -282,11 +360,16 @@ void MainWindow::model()
         profile //profile
     );
 
+
     if (stopFlag)
     {
         logWidget->push("===stopped===");
         stopFlag = false;
     }
+
+    filterWidget->refreshAffordances(data.affordances);
+
+    refreshMapping();
 
     visualizeAffordances(""); //no filter
 
@@ -311,7 +394,9 @@ void MainWindow::model()
             stopFlag = false;
         }
     }
+    filterWidget->refreshActions(data.actions);
     visualizeActions(""); //no filter
+
 
     graphWidgetAffordances->setFocus();
 }
@@ -349,7 +434,6 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         locationInScope(locationEdit->text(), data->originalUrl))
     {
         data->lastLocalUrl = url;
-        qDebug() << "lastLocalUrl = " << url;
     }
 
     int stateId = 0;
@@ -357,11 +441,12 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     //arrows to known states
     if (data->states.contains(state))
     {
-        data->affordances.append(Arrow(data->idCounter++, parentStateId, data->states[state], arrowType, affordanceLabel));
-
-        Arrow action(data->idCounter++, parentStateId, data->states[state], ARROW_TYPE_ACTION, actionLabel);
+        (data->affordanceCounter)++;
+        data->affordances.append(Arrow(data->idCounter++, parentStateId, data->states[state], arrowType, true, affordanceLabel));
+        Arrow action((data->actionCounter) + 1, parentStateId, data->states[state], ARROW_TYPE_ACTION, true, actionLabel);
         if (!data->actions.contains(action))
         {
+            (data->actionCounter)++; //delayed increment
             data->actions.append(action);
         }
 
@@ -382,16 +467,20 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     else //all other arrows
     {
         (data->counter)++;
+        (data->affordanceCounter)++;
         stateId = data->counter;
         data->states.insert(state, stateId);
         data->stateTitles.insert(stateId, stateTitle);
-        data->affordances.append(Arrow(data->idCounter++, parentStateId, stateId, arrowType, affordanceLabel));
+        data->affordances.append(Arrow(data->affordanceCounter, parentStateId, stateId, arrowType, true, affordanceLabel));
 
-        Arrow action(data->idCounter++, parentStateId, stateId, ARROW_TYPE_ACTION, actionLabel);
+        Arrow action((data->actionCounter) + 1, parentStateId, stateId, ARROW_TYPE_ACTION, true, actionLabel);
         if (!data->actions.contains(action))
         {
+            (data->actionCounter)++; //delayed increment
             data->actions.append(action);
         }
+
+        data->mapping.insert(data->affordanceCounter, data->actionCounter);
 
         if (this->linkType(data->originalUrl, url) == LINK_EXTERNAL ||
             !locationInScope(locationEdit->text(), data->originalUrl))
@@ -407,6 +496,8 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         }
     }
 
+    wait();
+
     //actions
     code = "nodeCount(";
     code += QString::number(profile);
@@ -414,7 +505,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     int count = intFromJs(code);
 
     QString origin;
-    origin = url;
+    origin = data->lastLocalUrl;//url; //exp
 
     for (int i = 0; i < count; i++)
     {
@@ -442,6 +533,18 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         code += ")";
         QString nodeText = stringFromJs(code);
 
+        if (
+            (nodeName.isEmpty() &&
+            nodeText.isEmpty()) ||
+            (nodeName == "\"\"" &&
+            nodeText == "\"\""))
+        {
+            qDebug() << "Bailing out - node with empty name and text";
+            wait(true, 2);
+        }
+
+        qDebug() << "Processing #" << i << " - node " << nodeName << " - label " << nodeText << "\n";
+
         for (int j = TRIGGER_CLICK; j < TRIGGER_INIT; j++)
         {
             code = "triggerAction(";
@@ -465,6 +568,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
             }
 
             wait(true);
+            //wait(); //check if faster but correct?
 
             affordanceLabel = triggerString(j);
             if (!nodeText.isEmpty())
@@ -504,10 +608,8 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
                 arrowType = ARROW_TYPE_EVENT_ARIA;
                 break;
             }
-
             recurse(
                 data,
-                //view->url().toString(),
                 this->locationEdit->text(),
                 affordanceLabel,
                 actionLabel,
@@ -515,7 +617,6 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
                 arrowType,
                 profile
             );
-
             navigate(origin);
         }
     }
@@ -526,7 +627,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     code += ")";
     count = intFromJs(code);
 
-    QString linkText, linkHref;
+    QString linkText, linkHref, linkHrefAbsolute;
     for (int i = 0; i < count; i++)
     {
         if (stopFlag)
@@ -551,7 +652,23 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         code += ")";
         linkHref = stringFromJs(code);
 
-        if (linkHref.isEmpty())
+        code = "linkHrefAbsolute(";
+        code += QString::number(i);
+        code += ", ";
+        code += QString::number(profile);
+        code += ")";
+        linkHrefAbsolute = stringFromJs(code);
+
+        qDebug() << "Link #" << i << " of " << count << " - absolute: " << linkHrefAbsolute << " - relative: " << linkHref << " - text: " << linkText;
+
+        //skip conditions
+        if (
+                linkHref.isEmpty() ||
+                linkHref == "\"\"" ||
+                blacklist.contains(linkHrefAbsolute) ||
+                linkHref.contains("mailto:") ||
+                linkHrefAbsolute.contains("https:")
+           )
         {
             continue;
         }
@@ -570,14 +687,19 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
 
         actionLabel = (linkText.isEmpty()) ? "action" : linkText;
 
+        /*
         code = "followLink(";
         code += QString::number(i);
         code += ", ";
         code += QString::number(profile);
         code += ")";
         logWidget->push(stringFromJs(code));
+        */
 
-        wait(false);
+        //exp
+        view->load(linkHrefAbsolute);
+        logWidget->push("===set location to " + linkHrefAbsolute + "===\n");
+        wait();
 
         arrowType = ARROW_TYPE_INIT;
         switch (linkType(url, linkHref))
@@ -596,7 +718,6 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
 
         recurse(
             data,
-            //view->url().toString(),
             this->locationEdit->text(),
             affordanceLabel,
             actionLabel,
@@ -649,10 +770,19 @@ void MainWindow::visualizeAffordances(const QString &filter)
     std::map<int, QString>::iterator it;
     for (it = states.begin(); it != states.end(); it++)
     {
+        bool active = true;
         if (!filter.isEmpty() && !filteredSet.contains(it->first))
-            continue;
+        {
+            active = false;
+        }
 
-        QString state = QString::number(it->first);
+        QString state;
+
+        if (!active)
+        {
+            state += "//";
+        }
+        state += QString::number(it->first);
         state += " [label=\"";
         state += it->second;
         state += "\"]\n";
@@ -663,15 +793,25 @@ void MainWindow::visualizeAffordances(const QString &filter)
     size = data.affordances.count();
     QString arrowLabel;
     int source, target;
+
     for (int i = 1; i < size; i++) //omit initial state 0
     {
         source = data.affordances.at(i).source;
         target = data.affordances.at(i).target;
 
-        if (!filter.isEmpty() && (!filteredSet.contains(source) || !filteredSet.contains(target)))
-            continue;
+        bool active = true;
+        if (!filter.isEmpty() &&
+            ((!filteredSet.contains(source) || !filteredSet.contains(target))))
+        {
+            active = false;
+        }
 
         QString arrow;
+
+        if (!active)
+        {
+            arrow += "//";
+        }
         arrow = QString::number(data.affordances.at(i).source);
         arrow += " -> ";
         arrow += QString::number(data.affordances.at(i).target);
@@ -765,6 +905,7 @@ void MainWindow::visualizeActions(const QString &filter)
 
     //states
     std::map<int, QString> states;
+
     std::vector<QString> edges;
 
     QVectorIterator<Arrow> i(data.actions);
@@ -778,6 +919,13 @@ void MainWindow::visualizeActions(const QString &filter)
     {
         //populate states
         a = i.next();
+
+        bool active = true;
+        if (!filter.isEmpty() && (!filteredSet.contains(a.source) || !filteredSet.contains(a.target)))
+        {
+            active = false;
+        }
+
         QString source, target;
         source = makeState(a.source, &data);
         target = makeState(a.target, &data);
@@ -786,7 +934,12 @@ void MainWindow::visualizeActions(const QString &filter)
 
         //populate edges
         QString edge, edgeLabel;
-        edge = QString::number(a.source);
+
+        if (!active)
+        {
+            edge += "//";
+        }
+        edge += QString::number(a.source);
         edge += " -> ";
         edge += QString::number(a.target);
         edge += " [label=\"";
@@ -804,10 +957,19 @@ void MainWindow::visualizeActions(const QString &filter)
     std::map<int, QString>::iterator it;
     for (it = states.begin(); it != states.end(); it++)
     {
+        bool active = true;
         if (!filter.isEmpty() && !filteredSet.contains(it->first))
-            continue;
+        {
+            active = false;
+        }
 
-        QString state = QString::number(it->first);
+        QString state;
+
+        if (!active)
+        {
+            state += "//";
+        }
+        state += QString::number(it->first);
         state += " [label=\"";
         state += it->second;
         state += "\"]\n";
@@ -824,6 +986,57 @@ void MainWindow::visualizeActions(const QString &filter)
     //end dot structure
     dotWidgetActions->push("}\n");
     graphWidgetActions->refresh(dotWidgetActions->text());
+}
+
+void MainWindow::refreshMapping()
+{
+    qDebug() << "MainWindow::refreshMapping()";
+
+    QHash<int, int> mapping = data.mapping;
+
+    QHashIterator<int, int> it(mapping);
+
+    dotWidgetMapping->push("digraph d {\n");
+    dotWidgetMapping->push("graph [ bgcolor=\"white\", resolution=\"128\", fontname=\"Helvetica\", fontcolor=\"black\", fontsize=\"10\" ];");
+    dotWidgetMapping->push("node [ fontname=\"Helvetica\", penwidth=\"0.25\", fontcolor=\"gray32\", fontsize=\"8\"];");
+    dotWidgetMapping->push("edge [ color=\"gray32\", arrowsize=\"0.75\", penwidth=\"0.25\", fontname=\"Helvetica\", fontcolor=\"dodgerblue4\", fontsize=\"8\", arrowhead=\"vee\" ];");
+
+    QSet<QString> nodes;
+    QStringList edges;
+
+    while (it.hasNext())
+    {
+        it.next();
+
+        QString key, value, line;
+        key = QString::number(it.key());
+        value = QString::number(it.value());
+        line = key + " -> " + value + " [label=\"edge\"]\n";
+
+        nodes.insert(key);
+        nodes.insert(value);
+        edges.append(line);
+    }
+
+    QSetIterator<QString> nodeIt(nodes);
+    while (nodeIt.hasNext())
+    {
+        QString node;
+        node += nodeIt.next();
+        node += " [label=\"node\"]\n";
+        dotWidgetMapping->push(node);
+    }
+
+    int count = edges.count();
+    for (int i = 0; i < count; i++)
+    {
+        dotWidgetMapping->push(edges.at(i));
+    }
+
+    //end dot structure
+    dotWidgetMapping->push("}\n");
+
+    //done - no graph needed
 }
 
 QString MainWindow::makeState(int i, Data *data)
@@ -843,26 +1056,32 @@ void MainWindow::runJs(const QString &code)
 QString MainWindow::stringFromJs(const QString &code)
 {
     QVariant result = view->page()->mainFrame()->evaluateJavaScript(code);
+    wait();
     return result.toString();
 }
 
 int MainWindow::intFromJs(const QString &code)
 {
     QVariant result = view->page()->mainFrame()->evaluateJavaScript(code);
+    wait();
     return result.toInt();
 }
 
 void MainWindow::navigate(const QString &url)
 {
     //don't open media files
-    if (url.endsWith(".mp3") ||
+    if (
+        blacklist.contains(url) ||
+        url.endsWith(".mp3") ||
         url.endsWith(".mp4") ||
         url.endsWith(".flv") ||
         url.endsWith(".pdf") ||
-        url.contains("mailto:"))
+        url.contains("mailto:") ||
+        url.contains("https:"))
     {
         return;
     }
+
     QString code = "window.location = ";
     code += "'";
     code += url;
@@ -901,27 +1120,6 @@ QString MainWindow::triggerString(int trigger)
         break;
     }
     return "invalid";
-}
-
-void MainWindow::openFilterDialog()
-{
-    bool ok;
-    QString text = QInputDialog::getText(this, tr("Filter"),
-        tr("States (e.g. 1, 2, 3, 5)                                                                                     "),
-        QLineEdit::Normal,
-        "",
-        &ok);
-    if (!ok || text.isEmpty())
-        return;
-
-    graphWidgetAffordances->clear();
-    visualizeAffordances(
-        text //filter
-    );
-    graphWidgetActions->clear();
-    visualizeActions(
-        text //filter
-    );
 }
 
 void MainWindow::setBusyFlag()
@@ -989,7 +1187,16 @@ int MainWindow::linkType(const QString &original, const QString &href)
 
 bool MainWindow::locationInScope(const QString &currentLocation, const QString &original)
 {
-    return currentLocation.startsWith(original);
+    int lastSlash = original.lastIndexOf("/");
+    QString originalPathSegment = original.left(lastSlash);
+
+    if (blacklist.contains(currentLocation))
+    {
+        qDebug() << currentLocation << " on blacklist";
+        return false;
+    }
+
+    return currentLocation.startsWith(originalPathSegment);
 }
 
 QString MainWindow::truncateString(const QString &s)
@@ -997,4 +1204,154 @@ QString MainWindow::truncateString(const QString &s)
     if (s.length() < 24)
         return s;
     return s.left(20) + "...";
+}
+
+void MainWindow::openBlacklistDialog()
+{
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("Blacklist"),
+        tr("URLs (e.g. http://www.google.com;http://www.yahoo.com)                                                                                     "),
+        QLineEdit::Normal,
+        blacklistString,
+        &ok);
+    if (!ok || text.isEmpty())
+        return;
+
+    blacklistString = text;
+    updateBlacklist();
+}
+
+void MainWindow::updateBlacklist()
+{
+    blacklist.clear();
+
+    QStringList list = blacklistString.split(";", QString::SkipEmptyParts);
+    int count = list.count();
+    QString url;
+    for (int i = 0; i < count; i++)
+    {
+        url = list.at(i);
+        blacklist.insert(url);
+    }
+
+    QVariant variant(blacklistString);
+    settings->setValue("blacklistString", variant);
+    settings->sync();
+}
+
+void MainWindow::draw()
+{
+    graphWidgetAffordances->refresh(dotWidgetAffordances->text());
+    graphWidgetActions->refresh(dotWidgetActions->text());
+    graphWidgetPullback->refresh(dotWidgetPullback->text());
+}
+
+void MainWindow::open()
+{
+    QString f = QFileDialog::getOpenFileName(
+        this, tr("Open File..."),
+        QString(),
+        tr("All Files (*.*)"));
+
+    if (f.isEmpty())
+        return;
+
+    QFile file;
+    file.setFileName(f);
+    file.open(QIODevice::ReadOnly);
+
+    QByteArray array = file.readAll();
+
+    QString buffer = QString::fromUtf8(array.constData(), array.count());
+
+    file.close();
+
+    setMachineState(buffer);
+}
+
+void MainWindow::save()
+{
+    QString f = QFileDialog::getSaveFileName(this, tr("Save as..."),
+        QString(), tr("All Files (*.*)"));
+    if (f.isEmpty())
+        return;
+
+    QFile file(f);
+
+    if (!file.open(QIODevice::WriteOnly))
+    {
+        QMessageBox::warning(this, "Can't write to file", file.errorString());
+        return;
+    }
+
+    QTextStream out(&file);
+    out.setCodec("UTF-8");
+    out << machineState();
+    out.flush();
+    file.close();
+}
+
+QString MainWindow::machineState()
+{
+    QString s, url, affordances, actions, pullback;
+
+    url = locationEdit->text();
+    affordances = dotWidgetAffordances->text();
+    actions = dotWidgetActions->text();
+    pullback = dotWidgetPullback->text();
+    affordances.replace("\n", "__RETURN__");
+    actions.replace("\n", "__RETURN__");
+    pullback.replace("\n", "__RETURN__");
+
+    s += url;
+    s += "\n";
+    s += affordances;
+    s += "\n";
+    s += actions;
+    s += "\n";
+    s += pullback;
+    s += "\n";
+
+    return s;
+}
+
+void MainWindow::setMachineState(const QString &s)
+{
+    QStringList list = s.split("\n");
+    if (list.count() < 4)
+    {
+        qDebug() << "Invalid machine state:\n" << s;
+        return;
+    }
+
+    QString url, affordances, actions, pullback;
+
+    url = list.at(0);
+    affordances = list.at(1);
+    actions = list.at(2);
+    pullback = list.at(3);
+
+    affordances = affordances.replace("__RETURN__", "\n");
+    actions = actions.replace("__RETURN__", "\n");
+    pullback = pullback.replace("__RETURN__", "\n");
+
+    view->load(url);
+    dotWidgetAffordances->setText(affordances);
+    dotWidgetActions->setText(actions);
+    dotWidgetPullback->setText(pullback);
+
+    //update graphical views
+    draw();
+
+    //update filter widget
+    this->filterWidget->refreshAffordances(affordances);
+    this->filterWidget->refreshActions(actions);
+
+    //update data structure
+    QVector<Arrow> affordanceArrows, actionArrows;
+    filterWidget->dotToArrows(affordances, affordanceArrows);
+    filterWidget->dotToArrows(actions, actionArrows);
+
+    data.affordances = affordanceArrows;
+    data.actions = actionArrows;
 }

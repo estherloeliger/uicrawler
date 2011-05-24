@@ -3,5 +3,6 @@
         <file>uicrawler.js</file>
         <file>uicrawler.ico</file>
         <file>jquery-latest.js</file>
+        <file>sha1.js</file>
     </qresource>
 </RCC>

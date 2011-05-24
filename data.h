@@ -10,17 +10,17 @@
 
 class Data {
 public:
-    Data() : counter(0), idCounter(0) { }
+    Data() : counter(0), idCounter(0), affordanceCounter(0), actionCounter(0) { }
     QHash<QString, int> states;
     QHash<int, QString> stateTitles;
     QVector<State> affordanceStates;
     QVector<State> actionStates;
     QVector<Arrow> affordances;
     QVector<Arrow> actions;
-    QHash<int, int> affordancesToActions;
+    QHash<int, int> mapping;
     QString originalUrl, lastLocalUrl;
 
-    int counter, idCounter;
+    int counter, idCounter, affordanceCounter, actionCounter;
     void clear() { states.clear(); stateTitles.clear(); affordances.clear(); actions.clear(); affordanceStates.clear(); actionStates.clear(); counter = 0; }
 };
 

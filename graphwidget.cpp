@@ -63,6 +63,13 @@ bool GraphWidget::refresh(const QString &graph)
         return false;
     }
 
+    doc->clear();
+
+    QFile file(pngPath);
+    if (!file.exists())
+    {
+        return false;
+    }
 
     QString html = "<img src=\"";
     html += pngPath;

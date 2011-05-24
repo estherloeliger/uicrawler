@@ -1,84 +1,230 @@
 #include "filterwidget.h"
-#include "ui_filterwidget.h"
 #include <QGridLayout>
 #include <QPushButton>
 #include <QStringList>
+#include <QTreeWidget>
+#include <QDebug>
+#include <QInputDialog>
+#include <QSet>
+#include <QRegExp>
+#include "mainwindow.h"
 
 FilterWidget::FilterWidget(QWidget *parent, const QString &title) :
     QDockWidget(title, parent)
 {
-
-    /*
-    QWidget *wi = new QWidget;
-    wi->setLayout(hbox);
-
-    QDockWidget *dw = new QDockWidget(tr("Command"), this);
-    dw->setWidget(wi);
-    addDockWidget(Qt::BottomDockWidgetArea, dw);
-     */
+    parentWindow = (MainWindow *)parent;
 
     affordancesTree = new QTreeWidget(this);
-    affordancesTree->setColumnCount(2);
-    //actionsTree = new QTreeWidget(this);
-    //actionsTree->setColumnCount(2);
+    affordancesTree->setColumnCount(5);
+    actionsTree = new QTreeWidget(this);
+    actionsTree->setColumnCount(5);
 
-    QStringList list;
-    list << "hola";
-    list << "hello";
+    affordancesTree->setColumnWidth(0, 50);
+    affordancesTree->setColumnWidth(1, 150);
+    affordancesTree->setColumnWidth(2, 50);
+    affordancesTree->setColumnWidth(3, 50);
+    affordancesTree->setColumnWidth(4, 50);
 
-    QTreeWidgetItem *item = new QTreeWidgetItem(list);
-    affordancesTree->addTopLevelItem(item);
+    actionsTree->setColumnWidth(0, 50);
+    actionsTree->setColumnWidth(1, 150);
+    actionsTree->setColumnWidth(2, 50);
+    actionsTree->setColumnWidth(3, 50);
+    actionsTree->setColumnWidth(4, 50);
 
-    QPushButton *button = new QPushButton("Select all", this);
+    QStringList affordanceHeaderLabels;
+    affordanceHeaderLabels << "Show" << "Affordance" << "Source" << "Target" << "#";
 
-    QGridLayout *layout = new QGridLayout;
+    QStringList actionHeaderLabels;
+    actionHeaderLabels << "Show" << "Action" << "Source" << "Target" << "#";
 
-    layout->setRowMinimumHeight(0, 50);
-    layout->setColumnMinimumWidth(0, 100);
-    layout->setColumnMinimumWidth(1, 100);
+    affordancesTree->setHeaderLabels(affordanceHeaderLabels);
+    actionsTree->setHeaderLabels(actionHeaderLabels);
+
+    QPushButton *matchAffordances = new QPushButton("Match...", this);
+    QPushButton *matchActions = new QPushButton("Match...", this);
+    QPushButton *apply = new QPushButton("Apply", this);
+
+    QGridLayout *layout = new QGridLayout();
+
     layout->addWidget(affordancesTree, 0, 0);
-    //layout->addWidget(actionsTree, 1, 0);
-    layout->addWidget(button, 0, 1);
+    layout->addWidget(matchAffordances, 0, 1);
 
-    this->setLayout(layout);
+    layout->addWidget(actionsTree, 1, 0);
+    layout->addWidget(matchActions, 1, 1);
 
-/*
+    layout->addWidget(apply, 2, 0);
 
-     QGridLayout *mainLayout = new QGridLayout;
-     mainLayout->setColumnStretch(0, 1);
-     mainLayout->setColumnStretch(3, 1);
-     mainLayout->addWidget(renderArea, 0, 0, 1, 4);
-     mainLayout->setRowMinimumHeight(1, 6);
-     mainLayout->addWidget(shapeLabel, 2, 1, Qt::AlignRight);
-     mainLayout->addWidget(shapeComboBox, 2, 2);
-     mainLayout->addWidget(penWidthLabel, 3, 1, Qt::AlignRight);
-     mainLayout->addWidget(penWidthSpinBox, 3, 2);
-     mainLayout->addWidget(penStyleLabel, 4, 1, Qt::AlignRight);
-     mainLayout->addWidget(penStyleComboBox, 4, 2);
-     mainLayout->addWidget(penCapLabel, 5, 1, Qt::AlignRight);
-     mainLayout->addWidget(penCapComboBox, 5, 2);
-     mainLayout->addWidget(penJoinLabel, 6, 1, Qt::AlignRight);
-     mainLayout->addWidget(penJoinComboBox, 6, 2);
-     mainLayout->addWidget(brushStyleLabel, 7, 1, Qt::AlignRight);
-     mainLayout->addWidget(brushStyleComboBox, 7, 2);
-     mainLayout->setRowMinimumHeight(8, 6);
-     mainLayout->addWidget(otherOptionsLabel, 9, 1, Qt::AlignRight);
-     mainLayout->addWidget(antialiasingCheckBox, 9, 2);
-     mainLayout->addWidget(transformationsCheckBox, 10, 2);
-     setLayout(mainLayout);
- */
+    QWidget *wi = new QWidget;
+    wi->setLayout(layout);
+
+    setWidget(wi);
+
+    connect(matchAffordances, SIGNAL(clicked()), this, SLOT(matchAffordances()));
+    connect(matchActions, SIGNAL(clicked()), this, SLOT(matchActions()));
+    connect(apply, SIGNAL(clicked()), this, SLOT(apply()));
+}
+
+void FilterWidget::matchAffordances()
+{
+    matchTree(affordancesTree);
+}
+
+void FilterWidget::matchActions()
+{
+    matchTree(actionsTree);
+}
+
+void FilterWidget::matchTree(QTreeWidget *tree)
+{
+    bool ok;
+    QString text = QInputDialog::getText(
+        this,
+        tr("Match affordances"),
+        tr("Regular expression (e.g. 'Go to .*')                                                                                     "),
+        QLineEdit::Normal,
+        "",
+        &ok);
+    if (!ok || text.isEmpty())
+        return;
+
+    QRegExp regex(text);
+    if (!regex.isValid())
+    {
+        qDebug() << text << " is not a valid regular expression";
+        return;
+    }
+
+    int count = tree->topLevelItemCount();
+    for (int i = 0; i < count; i++)
+    {
+        QTreeWidgetItem *item = tree->topLevelItem(i);
+        QString label = item->text(1);
+        bool check = regex.exactMatch(label);
+        item->setCheckState(0, (check) ? Qt::Checked : Qt::Unchecked);
+    }
+}
+
+void FilterWidget::apply()
+{
+    QString affordanceFilter, actionFilter;
+
+    affordanceFilter = filterString(affordancesTree);
+    actionFilter = filterString(actionsTree);
+
+    parentWindow->visualizeAffordances(affordanceFilter);
+    parentWindow->visualizeActions(actionFilter);
+}
+
+QString FilterWidget::filterString(QTreeWidget *tree)
+{
+    QString filter;
+
+    int count = tree->topLevelItemCount();
+    for (int i = 0; i < count; i++)
+    {
+        QTreeWidgetItem *item = tree->topLevelItem(i);
+        if (item->checkState(0) == Qt::Checked)
+        {
+            filter += item->text(2);
+            filter += ",";
+            filter += item->text(3);
+            filter += ",";
+        }
+    }
+
+    return filter;
 }
 
 FilterWidget::~FilterWidget()
 {
 }
 
-void FilterWidget::refresh(QVector<Arrow> &v)
+void FilterWidget::dotToArrows(const QString &s, QVector<Arrow> &v)
 {
-    int count = v.count();
+    v.clear();
+
+    QStringList list = s.split("\n");
+
+    int count = list.count();
+
+    QString line;
+    QRegExp match("(\\d+) -> (\\d+) \\[label=\"([A-Za-z0-9 ]+)");
+
+    if (!match.isValid())
+    {
+        qDebug() << "invalid regex: " << match.errorString();
+        return;
+    }
+
+    int id = 0;
+    bool active = true;
     for (int i = 0; i < count; i++)
     {
-        ;
+        line = list.at(i);
+        active = !line.startsWith("//");
+
+        QString source, target, label;
+
+        if (match.indexIn(line) != -1)
+        {
+            source = match.cap(1);
+            target = match.cap(2);
+            label = match.cap(3);
+            v.push_back(
+                Arrow(
+                    id++,
+                    source.toInt(),
+                    target.toInt(),
+                    ARROW_TYPE_LINK_SAME_HOST,
+                    active,
+                    label));
+        }
+    }
+}
+
+void FilterWidget::refreshAffordances(const QString &s)
+{
+    QVector<Arrow> v;
+    dotToArrows(s, v);
+    refreshAffordances(v);
+}
+
+void FilterWidget::refreshActions(const QString &s)
+{
+    QVector<Arrow> v;
+    dotToArrows(s, v);
+    refreshActions(v);
+}
+
+void FilterWidget::refreshAffordances(QVector<Arrow> &v)
+{
+    allAffordances = v;
+    refresh(this->affordancesTree, v);
+}
+
+void FilterWidget::refreshActions(QVector<Arrow> &v)
+{
+    allActions = v;
+    refresh(this->actionsTree, v);
+}
+
+void FilterWidget::refresh(QTreeWidget *tree, QVector<Arrow> &v)
+{
+    tree->clear();
+    int count = v.count();
+    for (int i = 1; i < count; i++)
+    {
+        QStringList list;
+        Arrow a = v.at(i);
+        list.append("");
+        list.append(a.label);
+        list.append(QString::number(a.source));
+        list.append(QString::number(a.target));
+        list.append(QString::number(i));
+        QTreeWidgetItem *item = new QTreeWidgetItem(list);
+        item->setFlags(Qt::ItemIsUserCheckable|Qt::ItemIsSelectable|Qt::ItemIsEnabled);
+        item->setCheckState(0, (a.active) ? Qt::Checked : Qt::Unchecked);
+        tree->addTopLevelItem(item);
     }
 }
 
@@ -87,3 +233,4 @@ void FilterWidget::clear()
     affordancesTree->clear();
     actionsTree->clear();
 }
+

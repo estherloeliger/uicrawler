@@ -17,6 +17,7 @@ public:
     void push(const QString &s);
     void clear();
     QString text();
+    void setText(const QString &s);
     ~LogWidget();
 private:
     Ui::LogWidget *ui;

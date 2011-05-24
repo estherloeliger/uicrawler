@@ -34,4 +34,6 @@ RESOURCES = uicrawler.qrc
 FORMS +=
 
 OTHER_FILES += \
-    uicrawler.js
+    uicrawler.js \
+    sha1.js \
+    jquery-latest.js

@@ -1,7 +1,10 @@
 <html>
-<head><title>uicrawler test</title><script type="text/javascript" src="jquery-latest.js"></script><script type="text/javascript" src="uicrawler.js"></script></head>
+<head><title>uicrawler test</title><script type="text/javascript" src="jquery-latest.js"></script><script type="text/javascript" src="sha1.js"></script><script type="text/javascript" src="uicrawler.js"></script></head>
 <body>
 	<h1>uicrawler test</h1>
+	<h2>Test for ARIA</h2>
+	<p aria-label="superARIAlabel" onclick="alert('aria')">Click here for ARIA fun and games</p>
+	<p onclick="triggerAction(5, 0, 0)">trigger action #0</p>
 	<p>Testing area</p>
 	<p>linkName = <script type="text/javascript">document.writeln(linkHref(0))</script></p>
 	<p><a name="destination"/><a href="http://www.google.com">Google</a></p>
@@ -20,5 +23,6 @@
 	<h2>nodename <a href="random.html">Random</a></h2>
 	<p><script type="text/javascript">document.writeln(nodeName(0))</script></p>
 	<p><a href="#top">Back to top</a></p>
+	
 </body>
 </html>

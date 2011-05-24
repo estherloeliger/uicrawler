@@ -144,6 +144,16 @@ function linkHref(intVal, intProfile)
     return links[i].getAttribute('href');
 }
 
+function linkHrefAbsolute(intVal, intProfile)
+{
+    var i = parseInt(intVal);
+    var profile = parseInt(intProfile);
+    var links = hyperlinkList(profile);
+    if (i >= links.length)
+        return '';
+    return links[i].href;
+}
+
 function stats(intProfile)
 {
     var profile = parseInt(intProfile);
@@ -222,9 +232,19 @@ function state(intProfile)
     s += document.title;
     s += "\n";
 
+
+    /*
     s += "url ";
     s += document.location.href;
     s += "\n";
+    */
+
+    /*
+    s += "hash ";
+    var hash = hex_sha1(document.body.innerHTML);
+    s += hash;
+    s += "\n";
+    */
 
     var listenerCount = 0;
 
@@ -411,7 +431,9 @@ function triggerAction(intValListener, intValIndex, intProfile)
     if (listener == Listener.OnAria &&
             (node.getAttribute("aria-label") != null ||
              node.getAttribute("aria-labelledby") != null))
+    {
         hasAriaListener = 1;
+    }
 
     //only dispatch if both conditions met
     if (listener == Listener.OnClick && hasClickListener == 1)
@@ -475,8 +497,24 @@ function followLink(intVal, intProfile)
         return s;
     }
 
+    /*
+    //exp: simulate click event - keep for JS hrefs
     var href = hyperlinks[intVal].getAttribute('href');
+    if (href != null)
+    {
+        var event = document.createEvent("MouseEvents");
+        event.initEvent("click", true, true);
+        hyperlinks[intVal].dispatchEvent(event);
+        var s = "===follow link to ";
+        s += href;
+        s += "===\n";
+        return s;
+    }
+    */
 
+    /*
+    //backup: follow href; no changes
+    var href = hyperlinks[intVal].getAttribute('href');
     if (href != null)
     {
         window.location = href;
@@ -485,6 +523,29 @@ function followLink(intVal, intProfile)
         s += "===\n";
         return s;
     }
+    */
+
+    var href = hyperlinks[intVal].getAttribute("href");
+    if (href != null && href[0] == '#')
+    {
+        var s = "===skipped internal link ";
+        s += href;
+        s += "===\n";
+        return s;
+    }
+
+    //node.href forces absolute; see http://groups.google.com/group/comp.lang.javascript/browse_thread/thread/6937160715587627?pli=1
+    var hrefAbsolute = hyperlinks[intVal].href;
+
+    if (hrefAbsolute != null)
+    {
+        window.location = hrefAbsolute;
+        var s = "===set location to ";
+        s += hrefAbsolute;
+        s += "===\n";
+        return s;
+    }
+
     return "===href invalid===\n";
 }
 
@@ -508,4 +569,23 @@ var Listener =
     OnMouseover:3,
     OnSubmit:4,
     OnAria:5
+}
+
+//http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+function hashCode(str)
+{
+    if (str == null)
+        return 0;
+
+    var hash = 0;
+    var length = str.length;
+
+    for (i = 0; i < length; i++)
+    {
+        char = str[i];
+        hash = 31 * hash + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+
+    return hash;
 }
