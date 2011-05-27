@@ -23,10 +23,6 @@ public:
     ~MainWindow();
 
 public slots:
-    void visualizeAffordances(const QString &filter = "");
-    void visualizeActions(const QString &filter = "");
-    void refreshMapping();
-
 protected slots:
 
     void adjustLocation();
@@ -58,6 +54,19 @@ protected slots:
     void bookmarkFree() { navigate("http://www.fsf.org"); }
     void bookmarkTest() { navigate("http://team.sourceforge.net/test.html"); }
 
+public slots:
+    void visualizeAffordances(const QString &filter = "");
+    void visualizeActions(const QString &filter = "");
+
+protected:
+    void refreshMapping(
+        const QSet<QString> &mapNodes,
+        const QSet<QString> &mapEdges,
+        LogWidget *widget);
+    void refreshPullback();
+    QString arrowsToMapString(const Arrow &a, const Arrow &b);
+    QString stateToMapString(int id1, int id2, const QString &label1, const QString &label2);
+
 private:
     QString jQuery, sha1, uicrawler; //JS libraries
     QString blacklistString;
@@ -67,8 +76,19 @@ private:
     QLineEdit *locationEdit;
     QSettings *settings;
     QAction *rotateAction;
-    LogWidget *logWidget, *dotWidgetAffordances, *dotWidgetActions, *dotWidgetMapping, *dotWidgetPullback;
-    GraphWidget *graphWidgetAffordances, *graphWidgetActions, *graphWidgetPullback;
+    LogWidget
+        *logWidget,
+        *dotWidgetAffordances,
+        *dotWidgetActions,
+        *dotWidgetAbstract,
+        *dotWidgetMappingAffordance,
+        *dotWidgetMappingAction,
+        *dotWidgetPullback;
+    GraphWidget
+        *graphWidgetAffordances,
+        *graphWidgetActions,
+        *graphWidgetAbstract,
+        *graphWidgetPullback;
     FilterWidget *filterWidget;
     ProfileWidget *profileWidget;
     int progress;
@@ -97,6 +117,9 @@ private:
     bool locationInScope(const QString &currentLocation, const QString &original);
     QString linkLabel(const QString &current, const QString &href);
     QString truncateString(const QString &s);
+    QString flattenString(const QString &s);
+
+    QString arrowVectorToPullback(QVector<Arrow> &v);
 
     bool busy, stopFlag;
 };

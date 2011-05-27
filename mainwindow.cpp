@@ -39,13 +39,15 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
 
     QFile fileUic;
     //tbd: use resource when code is more or less ready
-    //fileUic.setFileName(":/uicrawler.js");
+    fileUic.setFileName(":/uicrawler.js");
+/*
 #ifdef Q_WS_WIN
     fileUic.setFileName("C:/Qt/2010.05/tools/uicrawler/uicrawler.js");
 #endif
 #ifdef Q_WS_X11
     fileUic.setFileName("/home/esther/uicrawler/uicrawler.js");
 #endif
+*/
     fileUic.open(QIODevice::ReadOnly);
     uicrawler = fileUic.readAll();
     fileUic.close();
@@ -128,23 +130,32 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     logWidget = new LogWidget(this);
     logWidget->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetAffordances = new LogWidget(this, "Affordances");
+    dotWidgetAffordances = new LogWidget(this, "Aff");
     dotWidgetAffordances->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetActions = new LogWidget(this, "Actions");
+    dotWidgetActions = new LogWidget(this, "Act");
     dotWidgetActions->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetMapping = new LogWidget(this, "Mapping");
-    dotWidgetMapping->setAllowedAreas(Qt::RightDockWidgetArea);
+    dotWidgetAbstract = new LogWidget(this, "Abs");
+    dotWidgetAbstract->setAllowedAreas(Qt::RightDockWidgetArea);
+
+    dotWidgetMappingAffordance = new LogWidget(this, "Aff -> Abs");
+    dotWidgetMappingAffordance->setAllowedAreas(Qt::RightDockWidgetArea);
+
+    dotWidgetMappingAction = new LogWidget(this, "Act -> Abs");
+    dotWidgetMappingAction->setAllowedAreas(Qt::RightDockWidgetArea);
 
     dotWidgetPullback = new LogWidget(this, "Pullback");
     dotWidgetPullback->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    graphWidgetAffordances = new GraphWidget(this, "Affordance graph");
+    graphWidgetAffordances = new GraphWidget(this, "Aff graph");
     graphWidgetAffordances->setAllowedAreas(Qt::BottomDockWidgetArea);
 
-    graphWidgetActions = new GraphWidget(this, "Action graph");
+    graphWidgetActions = new GraphWidget(this, "Act graph");
     graphWidgetActions->setAllowedAreas(Qt::BottomDockWidgetArea);
+
+    graphWidgetAbstract = new GraphWidget(this, "Abs graph");
+    graphWidgetAbstract->setAllowedAreas(Qt::BottomDockWidgetArea);
 
     graphWidgetPullback = new GraphWidget(this, "Pullback graph");
     graphWidgetPullback->setAllowedAreas(Qt::BottomDockWidgetArea);
@@ -154,7 +165,9 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
     addDockWidget(Qt::RightDockWidgetArea, logWidget);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAffordances);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetActions);    
-    addDockWidget(Qt::RightDockWidgetArea, dotWidgetMapping);
+    addDockWidget(Qt::RightDockWidgetArea, dotWidgetAbstract);
+    addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAffordance);
+    addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAction);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetPullback);
     addDockWidget(Qt::RightDockWidgetArea, profileWidget);
 
@@ -164,13 +177,16 @@ MainWindow::MainWindow(const QUrl& url) : stopFlag(false)
 
     this->tabifyDockWidget(logWidget, dotWidgetAffordances);
     this->tabifyDockWidget(logWidget, dotWidgetActions);
-    this->tabifyDockWidget(logWidget, dotWidgetMapping);
+    this->tabifyDockWidget(logWidget, dotWidgetAbstract);
+    this->tabifyDockWidget(logWidget, dotWidgetMappingAffordance);
+    this->tabifyDockWidget(logWidget, dotWidgetMappingAction);
     this->tabifyDockWidget(logWidget, dotWidgetPullback);
     this->tabifyDockWidget(logWidget, filterWidget);
     this->tabifyDockWidget(logWidget, profileWidget);
     logWidget->raise();
 
     this->tabifyDockWidget(graphWidgetAffordances, graphWidgetActions);
+    this->tabifyDockWidget(graphWidgetAffordances, graphWidgetAbstract);
     this->tabifyDockWidget(graphWidgetAffordances, graphWidgetPullback);
     graphWidgetAffordances->raise();
 
@@ -360,16 +376,16 @@ void MainWindow::model()
         profile //profile
     );
 
-
     if (stopFlag)
     {
         logWidget->push("===stopped===");
         stopFlag = false;
     }
 
-    filterWidget->refreshAffordances(data.affordances);
+    filterWidget->refreshAffordances(data.affordanceEdges);
 
-    refreshMapping();
+    refreshMapping(data.mapAffordanceToAbstractNodes, data.mapAffordanceToAbstractEdges, dotWidgetMappingAffordance);
+    refreshMapping(data.mapActionToAbstractNodes, data.mapActionToAbstractEdges, dotWidgetMappingAction);
 
     visualizeAffordances(""); //no filter
 
@@ -394,11 +410,48 @@ void MainWindow::model()
             stopFlag = false;
         }
     }
-    filterWidget->refreshActions(data.actions);
+    filterWidget->refreshActions(data.actionEdges);
     visualizeActions(""); //no filter
 
+    refreshPullback();
 
     graphWidgetAffordances->setFocus();
+}
+
+QString MainWindow::arrowsToMapString(const Arrow &a, const Arrow &b)
+{
+    QString s;
+    s += "(\"";
+    s += QString::number(a.source);
+    s += "->";
+    s += QString::number(a.target);
+    s += "[label=\\\"";
+    s += a.label;
+    s += "\\\"]\",\"";
+    s += QString::number(b.source);
+    s += "->";
+    s += QString::number(b.target);
+    s += "[label=\\\"";
+    s += b.label;
+    s += "\\\"]\")";
+
+    return s;
+}
+
+QString MainWindow::stateToMapString(int id1, int id2, const QString &label1, const QString &label2)
+{
+    QString s;
+    s += "(\"";
+    s += QString::number(id1);
+    s += "[label=\\\"";
+    s += label1;
+    s += "\\\"]\",\"";
+    s += QString::number(id2);
+    s += "[label=\\\"";
+    s += label2;
+    s += "\\\"])";
+
+    return s;
 }
 
 void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabel, QString &actionLabel, int parentStateId, int arrowType, int profile)
@@ -422,9 +475,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     QString state = stringFromJs(code);
 
     code = "document.title";
-    QString stateTitle = "'";
-    stateTitle += truncateString(stringFromJs(code));
-    stateTitle += "'";
+    QString stateTitle = truncateString(flattenString(stringFromJs(code)));
 
     data->affordanceStates.append(State(data->idCounter++, stateTitle, state));
     data->actionStates.append(State(data->idCounter++, stateTitle, state));
@@ -442,12 +493,13 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     if (data->states.contains(state))
     {
         (data->affordanceCounter)++;
-        data->affordances.append(Arrow(data->idCounter++, parentStateId, data->states[state], arrowType, true, affordanceLabel));
-        Arrow action((data->actionCounter) + 1, parentStateId, data->states[state], ARROW_TYPE_ACTION, true, actionLabel);
-        if (!data->actions.contains(action))
+        data->affordanceEdges.append(Arrow(data->idCounter++, parentStateId, data->states[state], arrowType, true, affordanceLabel));
+        Arrow actionArrow((data->actionCounter) + 1, parentStateId, data->states[state], ARROW_TYPE_ACTION, true, actionLabel);
+        if (!data->actionEdges.contains(actionArrow))
         {
             (data->actionCounter)++; //delayed increment
-            data->actions.append(action);
+            data->actionEdges.append(actionArrow);
+            data->abstractEdges.append(actionArrow); //interim: abstract == action graph
         }
 
         if (
@@ -470,17 +522,44 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         (data->affordanceCounter)++;
         stateId = data->counter;
         data->states.insert(state, stateId);
-        data->stateTitles.insert(stateId, stateTitle);
-        data->affordances.append(Arrow(data->affordanceCounter, parentStateId, stateId, arrowType, true, affordanceLabel));
 
-        Arrow action((data->actionCounter) + 1, parentStateId, stateId, ARROW_TYPE_ACTION, true, actionLabel);
-        if (!data->actions.contains(action))
+        data->affordanceStateTitles.insert(stateId, stateTitle);
+        data->actionStateTitles.insert(stateId, stateTitle);
+        data->abstractStateTitles.insert(stateId, stateTitle);
+
+        Arrow affordanceArrow(data->affordanceCounter, parentStateId, stateId, arrowType, true, affordanceLabel);
+        data->affordanceEdges.append(affordanceArrow);
+
+        Arrow actionArrow((data->actionCounter) + 1, parentStateId, stateId, ARROW_TYPE_ACTION, true, actionLabel);
+        if (!data->actionEdges.contains(actionArrow))
         {
             (data->actionCounter)++; //delayed increment
-            data->actions.append(action);
+            data->actionEdges.append(actionArrow);
+            data->abstractEdges.append(actionArrow);
+            data->actionStateTitles.insert(data->actionCounter, stateTitle);
         }
 
-        data->mapping.insert(data->affordanceCounter, data->actionCounter);
+        data->mapAffordanceToAbstractEdges.insert(arrowsToMapString(affordanceArrow, actionArrow));
+        data->mapActionToAbstractEdges.insert(arrowsToMapString(actionArrow, actionArrow));
+
+        QString affordanceParentStateTitle, affordanceStateTitle, actionParentStateTitle, actionStateTitle;
+
+        affordanceParentStateTitle = (data->affordanceStateTitles.count(parentStateId)) ?
+                        data->affordanceStateTitles[parentStateId] :
+                            "Affordance state " + QString::number(parentStateId);
+        actionParentStateTitle = (data->actionStateTitles.count(parentStateId)) ?
+                                data->actionStateTitles[parentStateId] :
+                                "Action state " + QString::number(parentStateId);
+
+        data->mapAffordanceToAbstractNodes.insert(stateToMapString(parentStateId, parentStateId, affordanceParentStateTitle, actionParentStateTitle));
+
+        affordanceStateTitle = (data->affordanceStateTitles.count(stateId)) ?
+                        data->affordanceStateTitles[stateId] :
+                            "Affordance state " + QString::number(stateId);
+        actionStateTitle = (data->actionStateTitles.count(stateId)) ?
+                        data->actionStateTitles[stateId] :
+                        "Action state " + QString::number(stateId);
+        data->mapActionToAbstractNodes.insert(stateToMapString(stateId, stateId, affordanceStateTitle, actionStateTitle));
 
         if (this->linkType(data->originalUrl, url) == LINK_EXTERNAL ||
             !locationInScope(locationEdit->text(), data->originalUrl))
@@ -574,7 +653,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
             if (!nodeText.isEmpty())
             {
                 affordanceLabel += " '";
-                affordanceLabel += truncateString(nodeText);
+                affordanceLabel += truncateString(flattenString(nodeText));
                 affordanceLabel += "'";
             }
             else if (!nodeName.isEmpty())
@@ -584,7 +663,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
                affordanceLabel += "'";
             }
 
-            actionLabel = (nodeText.isEmpty()) ? "" : nodeText;
+            actionLabel = (nodeText.isEmpty()) ? "" : truncateString(flattenString(nodeText));
 
             arrowType = ARROW_TYPE_INIT;
             switch (j)
@@ -608,6 +687,7 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
                 arrowType = ARROW_TYPE_EVENT_ARIA;
                 break;
             }
+
             recurse(
                 data,
                 this->locationEdit->text(),
@@ -677,26 +757,16 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
         if (!linkText.isEmpty())
         {
             affordanceLabel += " '";
-            affordanceLabel += truncateString(linkText);
+            affordanceLabel += truncateString(flattenString(linkText));
             affordanceLabel += "'";
         }
         else //otherwise, truncate appropriate portion of URL
         {
-            affordanceLabel = truncateString(linkLabel(url,linkHref));
+            affordanceLabel = truncateString(flattenString(linkLabel(url,linkHref)));
         }
 
         actionLabel = (linkText.isEmpty()) ? "action" : linkText;
 
-        /*
-        code = "followLink(";
-        code += QString::number(i);
-        code += ", ";
-        code += QString::number(profile);
-        code += ")";
-        logWidget->push(stringFromJs(code));
-        */
-
-        //exp
         view->load(linkHrefAbsolute);
         logWidget->push("===set location to " + linkHrefAbsolute + "===\n");
         wait();
@@ -757,14 +827,14 @@ void MainWindow::visualizeAffordances(const QString &filter)
     //states
     std::map<int, QString> states;
 
-    int size = data.affordances.count();
+    int size = data.affordanceEdges.count();
     for (int i = 1; i < size; i++) //omit initial state 0
     {
         QString source, target;
-        source = makeState(data.affordances.at(i).source, &data);
-        target = makeState(data.affordances.at(i).target, &data);
-        states.insert(std::make_pair(data.affordances.at(i).source, source));
-        states.insert(std::make_pair(data.affordances.at(i).target, target));
+        source = makeState(data.affordanceEdges.at(i).source, &data);
+        target = makeState(data.affordanceEdges.at(i).target, &data);
+        states.insert(std::make_pair(data.affordanceEdges.at(i).source, source));
+        states.insert(std::make_pair(data.affordanceEdges.at(i).target, target));
     }
 
     std::map<int, QString>::iterator it;
@@ -790,14 +860,14 @@ void MainWindow::visualizeAffordances(const QString &filter)
     }
 
     //arrows
-    size = data.affordances.count();
+    size = data.affordanceEdges.count();
     QString arrowLabel;
     int source, target;
 
     for (int i = 1; i < size; i++) //omit initial state 0
     {
-        source = data.affordances.at(i).source;
-        target = data.affordances.at(i).target;
+        source = data.affordanceEdges.at(i).source;
+        target = data.affordanceEdges.at(i).target;
 
         bool active = true;
         if (!filter.isEmpty() &&
@@ -812,19 +882,18 @@ void MainWindow::visualizeAffordances(const QString &filter)
         {
             arrow += "//";
         }
-        arrow = QString::number(data.affordances.at(i).source);
+        arrow = QString::number(data.affordanceEdges.at(i).source);
         arrow += " -> ";
-        arrow += QString::number(data.affordances.at(i).target);
+        arrow += QString::number(data.affordanceEdges.at(i).target);
         arrow += " [label=\"";
 
-        arrowLabel = data.affordances.at(i).label;
-        arrowLabel = arrowLabel.replace("\n", "");
-        arrowLabel = arrowLabel.replace("\r", "");
-        arrowLabel = arrowLabel.replace("\t", " ");
+        arrowLabel = data.affordanceEdges.at(i).label;
+
+        arrowLabel = this->flattenString(arrowLabel);
         arrow += arrowLabel;
 
         QString arrowColor, arrowStyle;
-        int arrowType = data.affordances.at(i).type;
+        int arrowType = data.affordanceEdges.at(i).type;
         switch(arrowType)
         {
         case ARROW_TYPE_EVENT_CLICK:
@@ -908,7 +977,7 @@ void MainWindow::visualizeActions(const QString &filter)
 
     std::vector<QString> edges;
 
-    QVectorIterator<Arrow> i(data.actions);
+    QVectorIterator<Arrow> i(data.actionEdges);
     Arrow a;
     if (i.hasNext())
     {
@@ -985,57 +1054,59 @@ void MainWindow::visualizeActions(const QString &filter)
 
     //end dot structure
     dotWidgetActions->push("}\n");
+
+    dotWidgetAbstract->push(dotWidgetActions->text());
+
     graphWidgetActions->refresh(dotWidgetActions->text());
+    graphWidgetAbstract->refresh(dotWidgetAbstract->text());
+
+    //placeholder: abstract same as actions same as
 }
 
-void MainWindow::refreshMapping()
+void MainWindow::refreshMapping(
+    const QSet<QString> &mapNodes,
+    const QSet<QString> &mapEdges,
+    LogWidget *widget)
 {
-    qDebug() << "MainWindow::refreshMapping()";
+    QSetIterator<QString> nodeIt(mapNodes);
+    QSetIterator<QString> edgeIt(mapEdges);
 
-    QHash<int, int> mapping = data.mapping;
-
-    QHashIterator<int, int> it(mapping);
-
-    dotWidgetMapping->push("digraph d {\n");
-    dotWidgetMapping->push("graph [ bgcolor=\"white\", resolution=\"128\", fontname=\"Helvetica\", fontcolor=\"black\", fontsize=\"10\" ];");
-    dotWidgetMapping->push("node [ fontname=\"Helvetica\", penwidth=\"0.25\", fontcolor=\"gray32\", fontsize=\"8\"];");
-    dotWidgetMapping->push("edge [ color=\"gray32\", arrowsize=\"0.75\", penwidth=\"0.25\", fontname=\"Helvetica\", fontcolor=\"dodgerblue4\", fontsize=\"8\", arrowhead=\"vee\" ];");
-
-    QSet<QString> nodes;
-    QStringList edges;
-
-    while (it.hasNext())
-    {
-        it.next();
-
-        QString key, value, line;
-        key = QString::number(it.key());
-        value = QString::number(it.value());
-        line = key + " -> " + value + " [label=\"edge\"]\n";
-
-        nodes.insert(key);
-        nodes.insert(value);
-        edges.append(line);
-    }
-
-    QSetIterator<QString> nodeIt(nodes);
+    //nodes
+    QString buffer = "[";
+    bool first = true;
     while (nodeIt.hasNext())
     {
-        QString node;
-        node += nodeIt.next();
-        node += " [label=\"node\"]\n";
-        dotWidgetMapping->push(node);
+        if (first)
+        {
+            first = false;
+        }
+        else
+        {
+            buffer += ",";
+        }
+        buffer += nodeIt.next();
     }
+    buffer += "]";
+    widget->push(buffer);
 
-    int count = edges.count();
-    for (int i = 0; i < count; i++)
+    //edges
+    buffer = "[";
+    first = true;
+    while (edgeIt.hasNext())
     {
-        dotWidgetMapping->push(edges.at(i));
+        if (first)
+        {
+            first = false;
+        }
+        else
+        {
+            buffer += ",";
+        }
+        buffer += edgeIt.next();
     }
+    buffer += "]";
 
-    //end dot structure
-    dotWidgetMapping->push("}\n");
-
+    widget->push(buffer);
     //done - no graph needed
 }
 
@@ -1044,7 +1115,7 @@ QString MainWindow::makeState(int i, Data *data)
     QString s = "state ";
     s += QString::number(i);
     s += "\\n";
-    s += data->stateTitles[i];
+    s += data->affordanceStateTitles[i];
     return s;
 }
 
@@ -1206,6 +1277,16 @@ QString MainWindow::truncateString(const QString &s)
     return s.left(20) + "...";
 }
 
+QString MainWindow::flattenString(const QString &s)
+{
+    QString t = s;
+    t = t.replace("\n", " ");
+    t = t.replace("\r", " ");
+    t = t.replace("\t", " ");
+    t = t.replace(" {2,}", " ");
+    return t;
+}
+
 void MainWindow::openBlacklistDialog()
 {
     bool ok;
@@ -1243,7 +1324,8 @@ void MainWindow::draw()
 {
     graphWidgetAffordances->refresh(dotWidgetAffordances->text());
     graphWidgetActions->refresh(dotWidgetActions->text());
-    graphWidgetPullback->refresh(dotWidgetPullback->text());
+    graphWidgetAbstract->refresh(dotWidgetAbstract->text());
+    refreshPullback();
 }
 
 void MainWindow::open()
@@ -1293,14 +1375,20 @@ void MainWindow::save()
 
 QString MainWindow::machineState()
 {
-    QString s, url, affordances, actions, pullback;
+    QString s, url, affordances, actions, abstract, mappingAffordance, mappingAction, pullback;
 
     url = locationEdit->text();
     affordances = dotWidgetAffordances->text();
     actions = dotWidgetActions->text();
+    abstract = dotWidgetAbstract->text();
+    mappingAffordance = dotWidgetMappingAffordance->text();
+    mappingAction = dotWidgetMappingAction->text();
     pullback = dotWidgetPullback->text();
     affordances.replace("\n", "__RETURN__");
     actions.replace("\n", "__RETURN__");
+    abstract.replace("\n", "__RETURN__");
+    mappingAffordance.replace("\n", "__RETURN__");
+    mappingAction.replace("\n", "__RETURN__");
     pullback.replace("\n", "__RETURN__");
 
     s += url;
@@ -1308,6 +1396,12 @@ QString MainWindow::machineState()
     s += affordances;
     s += "\n";
     s += actions;
+    s += "\n";
+    s += abstract;
+    s += "\n";
+    s += mappingAffordance;
+    s += "\n";
+    s += mappingAction;
     s += "\n";
     s += pullback;
     s += "\n";
@@ -1324,20 +1418,29 @@ void MainWindow::setMachineState(const QString &s)
         return;
     }
 
-    QString url, affordances, actions, pullback;
+    QString url, affordances, actions, abstract, mappingAffordance, mappingAction, pullback;
 
     url = list.at(0);
     affordances = list.at(1);
     actions = list.at(2);
-    pullback = list.at(3);
+    abstract = list.at(3);
+    mappingAffordance = list.at(4);
+    mappingAction = list.at(5);
+    pullback = list.at(6);
 
     affordances = affordances.replace("__RETURN__", "\n");
     actions = actions.replace("__RETURN__", "\n");
+    abstract = abstract.replace("__RETURN__", "\n");
+    mappingAffordance = mappingAffordance.replace("__RETURN__", "\n");
+    mappingAction = mappingAction.replace("__RETURN__", "\n");
     pullback = pullback.replace("__RETURN__", "\n");
 
     view->load(url);
     dotWidgetAffordances->setText(affordances);
     dotWidgetActions->setText(actions);
+    dotWidgetAbstract->setText(abstract);
+    dotWidgetMappingAffordance->setText(mappingAffordance);
+    dotWidgetMappingAction->setText(mappingAction);
     dotWidgetPullback->setText(pullback);
 
     //update graphical views
@@ -1352,6 +1455,132 @@ void MainWindow::setMachineState(const QString &s)
     filterWidget->dotToArrows(affordances, affordanceArrows);
     filterWidget->dotToArrows(actions, actionArrows);
 
-    data.affordances = affordanceArrows;
-    data.actions = actionArrows;
+    data.affordanceEdges = affordanceArrows;
+    data.actionEdges = actionArrows;
+}
+
+QString MainWindow::arrowVectorToPullback(QVector<Arrow> &v)
+{
+    int count = v.count();
+
+    QStringList edges;
+    for (int i = 0; i < count; i++)
+    {
+        QString edge;
+        Arrow a = v.at(i);
+        if (i)
+        {
+            edge += ",";
+        }
+        edge += QString::number(a.source);
+        edge += "[label=\\\"";
+        edge += a.label;
+        edge += "\\\"]";
+
+        edges.append(edge);
+
+        //tbd: populate states
+    }
+
+    QString s;
+    s = "[\"";
+
+    int edgeCount = edges.count();
+    for (int i = 0; i < edgeCount; i++)
+    {
+        s += edges.at(i);
+    }
+
+    s += "\"]\n";
+
+    return s;
+}
+
+
+void MainWindow::refreshPullback()
+{
+    QVector<Arrow> affordanceArrows, actionArrows, abstractArrows;
+
+    filterWidget->dotToArrows(this->dotWidgetAffordances->text(), affordanceArrows);
+    filterWidget->dotToArrows(this->dotWidgetActions->text(), actionArrows);
+    filterWidget->dotToArrows(this->dotWidgetAbstract->text(), abstractArrows);
+
+    QString buffer;
+
+    buffer += arrowVectorToPullback(affordanceArrows);
+    buffer += arrowVectorToPullback(actionArrows);
+    buffer += arrowVectorToPullback(abstractArrows);
+    buffer += this->dotWidgetMappingAffordance->text();
+    buffer += this->dotWidgetMappingAction->text();
+
+    //fetch dot file from Haskell routine
+    QString tempPath = QDir::tempPath();
+
+    QString serializePath, dotPath;
+
+    for (int i = 0; ; i++)
+    {
+        serializePath = tempPath;
+        serializePath += "/uic";
+        serializePath += QString::number(i);
+        serializePath += + ".txt";
+        if (!QFile::exists(serializePath))
+            break;
+    }
+
+    for (int j = 0; ; j++)
+    {
+        dotPath = tempPath;
+        dotPath += "/uic";
+        dotPath += QString::number(j);
+        dotPath += ".dot";
+        if (!QFile::exists(dotPath))
+            break;
+    }
+
+    QFile serializeFile(serializePath);
+    serializeFile.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream out(&serializeFile);
+    out << buffer;
+    serializeFile.close();
+
+#ifdef Q_OS_LINUX
+    QProcess::execute("cd /tmp");
+#endif
+
+    QString haskellCmd;
+/*
+#ifdef Q_OS_LINUX
+            haskellCmd += "/home/esther/uicrawler-build-desktop";
+#else
+            haskellCmd += QCoreApplication::applicationDirPath();
+#endif
+*/
+    haskellCmd += QCoreApplication::applicationDirPath();
+    haskellCmd += "/bin/pullbacks_first ";
+    haskellCmd += serializePath;
+    haskellCmd += " ";
+    haskellCmd += dotPath;
+
+    qDebug() << haskellCmd;
+    int ret = QProcess::execute(haskellCmd);
+
+    if (ret)
+    {
+        qDebug() << "Haskell command returned error value";
+        return;
+    }
+
+    //read dot file
+    QString dot;
+
+    QFile file;
+    file.setFileName(dotPath);
+    file.open(QIODevice::ReadOnly);
+    dot = file.readAll();
+    file.close();
+
+    //refresh controls
+    dotWidgetPullback->setText(dot);
+    graphWidgetPullback->refresh(dot);
 }

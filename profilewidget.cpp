@@ -7,6 +7,8 @@ ProfileWidget::ProfileWidget(QWidget *parent, const QString &title) :
     list = new QListWidget(this);
     list->addItem("Default");
     list->addItem("WAI-ARIA");
+    list->addItem("Events only");
+    list->addItem("Links only");
     list->setCurrentRow(0);
     this->setWidget(list);
 }

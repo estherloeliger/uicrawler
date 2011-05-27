@@ -6,7 +6,7 @@ LogWidget::LogWidget(QWidget *parent, const QString &title) :
     edit = new QTextEdit(this);
     edit->document()->setMaximumBlockCount(4096);
     this->setWidget(edit);
-    this->setMinimumWidth(440);
+    this->setMinimumWidth(512);
 }
 
 LogWidget::~LogWidget()

@@ -3,6 +3,13 @@ function nodeList(intProfile)
     var profile = parseInt(intProfile);
 
     var list = [];
+
+    //exit if profile dictates events only
+    if (profile == Profile.Links)
+    {
+        return list;
+    }
+
     var treeWalker = document.createTreeWalker(
             document.body,
     NodeFilter.SHOW_ELEMENT,
@@ -80,7 +87,7 @@ function nodeList(intProfile)
         }
 
         //skip if PROFILE_WAI_ARIA and below cutoff
-        if (profile == 1 && isAria == 0)
+        if (profile == Profile.Wai && isAria == 0)
         {
             continue;
         }
@@ -183,6 +190,10 @@ function hyperlinkList(intProfile)
 
     var list = [];
 
+    //exit if profile dictates events only
+    if (profile == Profile.Events)
+        return list;
+
     var anchors = document.getElementsByTagName('a');
     for (var i = 0; i < anchors.length; i++)
     {
@@ -212,7 +223,7 @@ function hyperlinkList(intProfile)
             continue;
 
         //skip if PROFILE_WAI_ARIA and below cutoff
-        if (profile == 1 && isAria == 0)
+        if (profile == Profile.Wai && isAria == 0)
         {
             continue;
         }
@@ -569,6 +580,14 @@ var Listener =
     OnMouseover:3,
     OnSubmit:4,
     OnAria:5
+}
+
+var Profile =
+{
+    Default:0,
+    Wai:1,
+    Events:2,
+    Links:3
 }
 
 //http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
