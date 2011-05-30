@@ -305,13 +305,23 @@ void MainWindow::stats()
     logWidget->raise();
 }
 
-void MainWindow::clearLogs()
+void MainWindow::clearLogs(bool clearInputDotWidgets)
 {
     logWidget->clear();
-    dotWidgetAffordances->clear();
-    dotWidgetActions->clear();
+
+    if(clearInputDotWidgets)
+    {
+        dotWidgetAffordances->clear();
+        dotWidgetActions->clear();
+        dotWidgetAbstract->clear();
+        dotWidgetMappingAction->clear();
+        dotWidgetMappingAffordance->clear();
+    }
+    dotWidgetPullback->clear();
     graphWidgetAffordances->clear();
     graphWidgetActions->clear();
+    graphWidgetAbstract->clear();
+    graphWidgetPullback->clear();
 }
 
 void MainWindow::wait(bool force, int timeout)
@@ -354,8 +364,9 @@ void MainWindow::stop()
 void MainWindow::model()
 {
     QString url = this->locationEdit->text();
+    bool isWebsiteModel = !url.isEmpty();
 
-    clearLogs();
+    clearLogs(isWebsiteModel);
     data.clear();
     stopFlag = false;
     data.originalUrl = data.lastLocalUrl = url;
@@ -366,35 +377,9 @@ void MainWindow::model()
     int profile = profileWidget->row();
 
     QString label = "init";
-    recurse(
-        &data,
-        url,
-        label, //affordance label
-        label, //action label
-        TRIGGER_INIT, //trigger type
-        ARROW_TYPE_INIT, //arrow type
-        profile //profile
-    );
 
-    if (stopFlag)
+    if (isWebsiteModel)
     {
-        logWidget->push("===stopped===");
-        stopFlag = false;
-    }
-
-    filterWidget->refreshAffordances(data.affordanceEdges);
-
-    refreshMapping(data.mapAffordanceToAbstractNodes, data.mapAffordanceToAbstractEdges, dotWidgetMappingAffordance);
-    refreshMapping(data.mapActionToAbstractNodes, data.mapActionToAbstractEdges, dotWidgetMappingAction);
-
-    visualizeAffordances(""); //no filter
-
-    if (profile != 0)
-    {
-        logWidget->push("===default profile model===");
-        data.clear();
-        stopFlag = false;
-        data.originalUrl = data.lastLocalUrl = url;
         recurse(
             &data,
             url,
@@ -402,19 +387,55 @@ void MainWindow::model()
             label, //action label
             TRIGGER_INIT, //trigger type
             ARROW_TYPE_INIT, //arrow type
-            0 //override profile
+            profile //profile
         );
+
         if (stopFlag)
         {
             logWidget->push("===stopped===");
             stopFlag = false;
         }
+
+        filterWidget->refreshAffordances(data.affordanceEdges);
+
+        refreshMapping(data.mapAffordanceToAbstractNodes, data.mapAffordanceToAbstractEdges, dotWidgetMappingAffordance);
+        refreshMapping(data.mapActionToAbstractNodes, data.mapActionToAbstractEdges, dotWidgetMappingAction);
+
+        visualizeAffordances(""); //no filter
+
+        if (profile != 0)
+        {
+            logWidget->push("===default profile model===");
+            data.clear();
+            stopFlag = false;
+            data.originalUrl = data.lastLocalUrl = url;
+            recurse(
+                &data,
+                url,
+                label, //affordance label
+                label, //action label
+                TRIGGER_INIT, //trigger type
+                ARROW_TYPE_INIT, //arrow type
+                0 //override profile
+            );
+            if (stopFlag)
+            {
+                logWidget->push("===stopped===");
+                stopFlag = false;
+            }
+        }
+
+        filterWidget->refreshActions(data.actionEdges);
+        visualizeActions(""); //no filter
     }
-    filterWidget->refreshActions(data.actionEdges);
-    visualizeActions(""); //no filter
+    else
+    {
+        graphWidgetAffordances->refresh(dotWidgetAffordances->text());
+        graphWidgetActions->refresh(dotWidgetActions->text());
+        graphWidgetAbstract->refresh(dotWidgetAbstract->text());
+    }
 
     refreshPullback();
-
     graphWidgetAffordances->setFocus();
 }
 
@@ -1557,6 +1578,7 @@ QString MainWindow::stateVectorToPullback(QVector<State> &v)
 
 void MainWindow::refreshPullback()
 {
+    logWidget->push("=== refreshPullback ===\n");
     QVector<State> affordanceStates, actionStates, abstractStates;
     QVector<Arrow> affordanceArrows, actionArrows, abstractArrows;
 
@@ -1578,11 +1600,6 @@ void MainWindow::refreshPullback()
     buffer += this->dotWidgetMappingAffordance->text();
     buffer += "\n";
     buffer += this->dotWidgetMappingAction->text();
-
-
-    //test
-    qDebug() << buffer;
-    //end test
 
     //fetch dot file from Haskell routine
     QString tempPath = QDir::tempPath();
@@ -1639,6 +1656,7 @@ void MainWindow::refreshPullback()
     if (ret)
     {
         qDebug() << "Haskell command returned error value";
+        qDebug() << buffer;
         return;
     }
 

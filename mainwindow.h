@@ -38,7 +38,7 @@ protected slots:
     void save();
 
     void state();
-    void clearLogs();
+    void clearLogs(bool);
     void stats();
     void model();
     void draw();
