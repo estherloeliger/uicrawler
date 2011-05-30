@@ -449,7 +449,7 @@ QString MainWindow::stateToMapString(int id1, int id2, const QString &label1, co
     s += QString::number(id2);
     s += "[label=\\\"";
     s += label2;
-    s += "\\\"])";
+    s += "\\\"]\")";
 
     return s;
 }
@@ -475,10 +475,11 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     QString state = stringFromJs(code);
 
     code = "document.title";
-    QString stateTitle = truncateString(flattenString(stringFromJs(code)));
+    QString stateTitle = truncateString(stringFromJs(code));//truncateString(flattenString(stringFromJs(code)));
 
-    data->affordanceStates.append(State(data->idCounter++, stateTitle, state));
-    data->actionStates.append(State(data->idCounter++, stateTitle, state));
+    data->affordanceStates.append(State(data->affordanceCounter++, stateTitle, state));
+    data->actionStates.append(State(data->actionCounter++, stateTitle, state));
+    data->abstractStates.append(State(data->abstractCounter++, stateTitle, state));
 
     //keeping track of lastLocalUrl
     if (linkType(data->originalUrl, url) != LINK_EXTERNAL &&
@@ -493,14 +494,26 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
     if (data->states.contains(state))
     {
         (data->affordanceCounter)++;
-        data->affordanceEdges.append(Arrow(data->idCounter++, parentStateId, data->states[state], arrowType, true, affordanceLabel));
+        Arrow affordanceArrow(data->affordanceCounter, parentStateId, data->states[state], arrowType, true, affordanceLabel);
+        data->affordanceEdges.append(affordanceArrow);
         Arrow actionArrow((data->actionCounter) + 1, parentStateId, data->states[state], ARROW_TYPE_ACTION, true, actionLabel);
+
+        if(affordanceLabel != "init")
+        {
+            data->mapAffordanceToAbstractEdges.insert(arrowsToMapString(affordanceArrow, actionArrow));//mapping
+        }
+
         if (!data->actionEdges.contains(actionArrow))
         {
             (data->actionCounter)++; //delayed increment
             data->actionEdges.append(actionArrow);
             data->abstractEdges.append(actionArrow); //interim: abstract == action graph
+            if(actionLabel != "init")
+            {
+                data->mapActionToAbstractEdges.insert(arrowsToMapString(actionArrow, actionArrow));//mapping
+            }
         }
+
 
         if (
             linkType(data->originalUrl, url) == LINK_EXTERNAL ||
@@ -529,37 +542,35 @@ void MainWindow::recurse(Data *data, const QString &url, QString &affordanceLabe
 
         Arrow affordanceArrow(data->affordanceCounter, parentStateId, stateId, arrowType, true, affordanceLabel);
         data->affordanceEdges.append(affordanceArrow);
-
         Arrow actionArrow((data->actionCounter) + 1, parentStateId, stateId, ARROW_TYPE_ACTION, true, actionLabel);
+
+        //mapping
+        if(affordanceLabel != "init")
+        {
+            data->mapAffordanceToAbstractEdges.insert(arrowsToMapString(affordanceArrow, actionArrow));
+        }
+        QString affordanceStateTitle, actionStateTitle;
+        affordanceStateTitle = (data->affordanceStateTitles.count(stateId)) ?
+                        makeState(stateId, data->affordanceStateTitles[stateId]) :
+                            "Affordance state " + QString::number(stateId);
+        actionStateTitle = (data->actionStateTitles.count(stateId)) ?
+                        makeState(stateId, data->actionStateTitles[stateId]) :
+                        "Action state " + QString::number(stateId);
+        data->mapAffordanceToAbstractNodes.insert(stateToMapString(stateId, stateId, affordanceStateTitle, actionStateTitle));
+        data->mapActionToAbstractNodes.insert(stateToMapString(stateId, stateId, actionStateTitle, actionStateTitle));
+        //end mapping
+
         if (!data->actionEdges.contains(actionArrow))
         {
             (data->actionCounter)++; //delayed increment
             data->actionEdges.append(actionArrow);
             data->abstractEdges.append(actionArrow);
             data->actionStateTitles.insert(data->actionCounter, stateTitle);
+            if(actionLabel != "init")
+            {
+                data->mapActionToAbstractEdges.insert(arrowsToMapString(actionArrow, actionArrow));//mapping
+            }
         }
-
-        data->mapAffordanceToAbstractEdges.insert(arrowsToMapString(affordanceArrow, actionArrow));
-        data->mapActionToAbstractEdges.insert(arrowsToMapString(actionArrow, actionArrow));
-
-        QString affordanceParentStateTitle, affordanceStateTitle, actionParentStateTitle, actionStateTitle;
-
-        affordanceParentStateTitle = (data->affordanceStateTitles.count(parentStateId)) ?
-                        data->affordanceStateTitles[parentStateId] :
-                            "Affordance state " + QString::number(parentStateId);
-        actionParentStateTitle = (data->actionStateTitles.count(parentStateId)) ?
-                                data->actionStateTitles[parentStateId] :
-                                "Action state " + QString::number(parentStateId);
-
-        data->mapAffordanceToAbstractNodes.insert(stateToMapString(parentStateId, parentStateId, affordanceParentStateTitle, actionParentStateTitle));
-
-        affordanceStateTitle = (data->affordanceStateTitles.count(stateId)) ?
-                        data->affordanceStateTitles[stateId] :
-                            "Affordance state " + QString::number(stateId);
-        actionStateTitle = (data->actionStateTitles.count(stateId)) ?
-                        data->actionStateTitles[stateId] :
-                        "Action state " + QString::number(stateId);
-        data->mapActionToAbstractNodes.insert(stateToMapString(stateId, stateId, affordanceStateTitle, actionStateTitle));
 
         if (this->linkType(data->originalUrl, url) == LINK_EXTERNAL ||
             !locationInScope(locationEdit->text(), data->originalUrl))
@@ -830,11 +841,14 @@ void MainWindow::visualizeAffordances(const QString &filter)
     int size = data.affordanceEdges.count();
     for (int i = 1; i < size; i++) //omit initial state 0
     {
+        int sourceId, targetId;
+        sourceId = data.affordanceEdges.at(i).source;
+        targetId = data.affordanceEdges.at(i).target;
         QString source, target;
-        source = makeState(data.affordanceEdges.at(i).source, &data);
-        target = makeState(data.affordanceEdges.at(i).target, &data);
-        states.insert(std::make_pair(data.affordanceEdges.at(i).source, source));
-        states.insert(std::make_pair(data.affordanceEdges.at(i).target, target));
+        source = makeState(sourceId, data.affordanceStateTitles[sourceId]);
+        target = makeState(targetId, data.affordanceStateTitles[targetId]);
+        states.insert(std::make_pair(sourceId, source));
+        states.insert(std::make_pair(targetId, target));
     }
 
     std::map<int, QString>::iterator it;
@@ -996,8 +1010,8 @@ void MainWindow::visualizeActions(const QString &filter)
         }
 
         QString source, target;
-        source = makeState(a.source, &data);
-        target = makeState(a.target, &data);
+        source = makeState(a.source, data.actionStateTitles[a.source]);
+        target = makeState(a.target, data.actionStateTitles[a.target]);
         states.insert(std::make_pair(a.source, source));
         states.insert(std::make_pair(a.target, target));
 
@@ -1110,12 +1124,12 @@ void MainWindow::refreshMapping(
     //done - no graph needed
 }
 
-QString MainWindow::makeState(int i, Data *data)
+QString MainWindow::makeState(int i, const QString &title)
 {
     QString s = "state ";
     s += QString::number(i);
     s += "\\n";
-    s += data->affordanceStateTitles[i];
+    s += title;
     return s;
 }
 
@@ -1468,11 +1482,9 @@ QString MainWindow::arrowVectorToPullback(QVector<Arrow> &v)
     {
         QString edge;
         Arrow a = v.at(i);
-        if (i)
-        {
-            edge += ",";
-        }
         edge += QString::number(a.source);
+        edge += "->";
+        edge += QString::number(a.target);
         edge += "[label=\\\"";
         edge += a.label;
         edge += "\\\"]";
@@ -1483,15 +1495,61 @@ QString MainWindow::arrowVectorToPullback(QVector<Arrow> &v)
     }
 
     QString s;
-    s = "[\"";
+    s = "[";
 
     int edgeCount = edges.count();
     for (int i = 0; i < edgeCount; i++)
     {
+        if (i)
+        {
+            s += ",";
+        }
+        s += "\"";
         s += edges.at(i);
+        s += "\"";
     }
 
-    s += "\"]\n";
+    s += "]\n";
+
+    return s;
+}
+
+
+QString MainWindow::stateVectorToPullback(QVector<State> &v)
+{
+    int count = v.count();
+
+    QStringList nodes;
+    for (int i = 0; i < count; i++)
+    {
+        QString node;
+        State s = v.at(i);
+        node += QString::number(s.id);
+        node += "[label=\\\"";
+        node += s.title;
+        node += "\\\"]";
+
+        nodes.append(node);
+
+        //tbd: populate states
+    }
+
+    QString s;
+    s = "[";
+
+    int nodeCount = nodes.count();
+    for (int i = 0; i < nodeCount; i++)
+    {
+        if (i)
+        {
+            s += ",";
+        }
+        s += "\"";
+        s += nodes.at(i);
+        s += "\"";
+    }
+
+    s += "]\n";
 
     return s;
 }
@@ -1499,19 +1557,32 @@ QString MainWindow::arrowVectorToPullback(QVector<Arrow> &v)
 
 void MainWindow::refreshPullback()
 {
+    QVector<State> affordanceStates, actionStates, abstractStates;
     QVector<Arrow> affordanceArrows, actionArrows, abstractArrows;
 
+    filterWidget->dotToStates(this->dotWidgetAffordances->text(), affordanceStates);
     filterWidget->dotToArrows(this->dotWidgetAffordances->text(), affordanceArrows);
+    filterWidget->dotToStates(this->dotWidgetActions->text(), actionStates);
     filterWidget->dotToArrows(this->dotWidgetActions->text(), actionArrows);
+    filterWidget->dotToStates(this->dotWidgetAbstract->text(), abstractStates);
     filterWidget->dotToArrows(this->dotWidgetAbstract->text(), abstractArrows);
 
     QString buffer;
 
+    buffer += stateVectorToPullback(affordanceStates);
     buffer += arrowVectorToPullback(affordanceArrows);
+    buffer += stateVectorToPullback(actionStates);
     buffer += arrowVectorToPullback(actionArrows);
+    buffer += stateVectorToPullback(abstractStates);
     buffer += arrowVectorToPullback(abstractArrows);
     buffer += this->dotWidgetMappingAffordance->text();
+    buffer += "\n";
     buffer += this->dotWidgetMappingAction->text();
+
+
+    //test
+    qDebug() << buffer;
+    //end test
 
     //fetch dot file from Haskell routine
     QString tempPath = QDir::tempPath();

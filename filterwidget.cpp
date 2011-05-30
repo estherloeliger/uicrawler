@@ -148,7 +148,8 @@ void FilterWidget::dotToArrows(const QString &s, QVector<Arrow> &v)
     int count = list.count();
 
     QString line;
-    QRegExp match("(\\d+) -> (\\d+) \\[label=\"([A-Za-z0-9 ]+)");
+    //QRegExp match("(\\d+) -> (\\d+) \\[label=\"([A-Za-z0-9 .:]+)");
+    QRegExp match("(\\d+) -> (\\d+) \\[label=\"([^\"]+)");
 
     if (!match.isValid())
     {
@@ -177,6 +178,46 @@ void FilterWidget::dotToArrows(const QString &s, QVector<Arrow> &v)
                     target.toInt(),
                     ARROW_TYPE_LINK_SAME_HOST,
                     active,
+                    label));
+        }
+    }
+}
+
+void FilterWidget::dotToStates(const QString &s, QVector<State> &v)
+{
+    v.clear();
+
+    QStringList list = s.split("\n");
+
+    int count = list.count();
+
+    QString line;
+    //QRegExp match("^(\\d+) \\[label=\"([A-Za-z0-9 \\\\.:]+)");
+    QRegExp match("^(\\d+) \\[label=\"([^\"]+)");
+    //QRegExp nonMatch("(\\d+) -> (\\d+) \\[label=\"([A-Za-z0-9 .:]+)");
+    QRegExp nonMatch("(\\d+) -> (\\d+) \\[label=\"([^\"]+)");
+
+    if (!match.isValid() || !nonMatch.isValid())
+    {
+        qDebug() << "invalid regex: " << match.errorString();
+        return;
+    }
+
+    bool active = true;
+    for (int i = 0; i < count; i++)
+    {
+        line = list.at(i);
+        active = !line.startsWith("//");
+
+        QString state, label;
+
+        if ((match.indexIn(line) != -1) && (nonMatch.indexIn(line) == -1))
+        {
+            state = match.cap(1);
+            label = match.cap(2);
+            v.push_back(
+                State(
+                    state.toInt(),
                     label));
         }
     }

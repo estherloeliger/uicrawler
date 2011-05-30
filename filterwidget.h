@@ -5,6 +5,7 @@
 #include <QString>
 #include <QVector>
 #include "arrow.h"
+#include "state.h"
 class QTreeWidget;
 class MainWindow;
 
@@ -22,6 +23,7 @@ public:
     void refresh(QTreeWidget *tree, QVector<Arrow> &v);
     void clear();
     void dotToArrows(const QString &s, QVector<Arrow> &v); //public to be accessible from MainWindow
+    void dotToStates(const QString &s, QVector<State> &v); //public to be accessible from MainWindow
 protected slots:
     void matchAffordances();
     void matchActions();

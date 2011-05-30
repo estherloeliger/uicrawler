@@ -112,7 +112,7 @@ private:
     void setMachineState(const QString &s);
 
     QHash<int, QString> nodeNames, linkNames;
-    QString makeState(int i, Data *data);
+    QString makeState(int i, const QString &title);
     int linkType(const QString &original, const QString &href);
     bool locationInScope(const QString &currentLocation, const QString &original);
     QString linkLabel(const QString &current, const QString &href);
@@ -120,7 +120,7 @@ private:
     QString flattenString(const QString &s);
 
     QString arrowVectorToPullback(QVector<Arrow> &v);
-
+    QString stateVectorToPullback(QVector<State> &v);
     bool busy, stopFlag;
 };
 
