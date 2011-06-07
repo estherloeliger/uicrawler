@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QString>
 #include <QVector>
+#include <QSet>
 #include "arrow.h"
 #include "state.h"
 

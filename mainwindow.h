@@ -1,6 +1,9 @@
 #include <QtGui>
-
-#define STATE_MAX 32
+#include <QSet>
+#include <QSettings>
+#include "data.h"
+#include "arrow.h"
+#include "browser.h"
 
 class QWebView;
 class QLineEdit;
@@ -9,17 +12,12 @@ class GraphWidget;
 class ProfileWidget;
 class FilterWidget;
 
-#include <QSet>
-#include <QSettings>
-#include "data.h"
-#include "arrow.h"
-
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    MainWindow(const QUrl& url);
+    MainWindow();
     ~MainWindow();
 
 public slots:
@@ -38,7 +36,7 @@ protected slots:
     void save();
 
     void state();
-    void clearLogs(bool);
+    void clearLogs(bool b = true);
     void stats();
     void model();
     void draw();
@@ -48,12 +46,18 @@ protected slots:
     void stop();
 
     //bookmark slots
-    void bookmarkIbis() { navigate("http://www.ibisreader.com/library/view/Alice's+Adventures+in+Wonderland/43239/cover.xml?first_item=1"); }
-    void bookmarkTwenty() { navigate("http://www.20thingsilearned.com/foreword"); }
-    void bookmarkBooks() { navigate("http://books.google.com/ebooks/reader?id=ey8EAAAAQAAJ&printsec=frontcover&output=reader&pg=GBS.PP1.w.1.0.0"); }
-    void bookmarkFree() { navigate("http://www.fsf.org"); }
-    void bookmarkTest() { navigate("http://team.sourceforge.net/test.html"); }
-
+    void bookmarkIbis() { browser->navigate("http://www.ibisreader.com/library"); }
+    void bookmarkTwenty() { browser->navigate("http://www.20thingsilearned.com/foreword"); }
+    void bookmarkBooks() { browser->navigate("http://books.google.com/ebooks/reader?id=ey8EAAAAQAAJ&printsec=frontcover&output=reader&pg=GBS.PP1.w.1.0.0"); }
+    void bookmarkFourmilab() { browser->navigate("http://www.fourmilab.ch/cgi-bin/Solar/"); }
+    void bookmarkFree() { browser->navigate("http://www.fsf.org"); }
+    void bookmarkAlertbox() { browser->navigate("http://www.useit.com/alertbox/nng-anniversary.html"); }
+    void bookmarkTest() { browser->navigate("http://team.sourceforge.net/test.html"); }
+    void bookmarkGrep() { browser->navigate("http://www.gnu.org/software/grep/index.html"); }
+    void bookmarkVi() { browser->navigate("http://unixhelp.ed.ac.uk/vi/"); }
+    void bookmarkUnspace() { browser->navigate("http://unspace.ca/"); }
+    void bookmarkBetterInteractive() { browser->navigate("http://www.betterinteractive.com/"); }
+    void bookmarkBigCartel() { browser->navigate("http://bigcartel.com/"); }
 public slots:
     void visualizeAffordances(const QString &filter = "");
     void visualizeActions(const QString &filter = "");
@@ -64,18 +68,16 @@ protected:
         const QSet<QString> &mapEdges,
         LogWidget *widget);
     void refreshPullback();
-    QString arrowsToMapString(const Arrow &a, const Arrow &b);
-    QString stateToMapString(int id1, int id2, const QString &label1, const QString &label2);
 
 private:
     QString jQuery, sha1, uicrawler; //JS libraries
-    QString blacklistString;
+    QString blacklistString, lastOpenedFile;
     QSet<QString> blacklist;
     void updateBlacklist();
-    QWebView *view;
     QLineEdit *locationEdit;
     QSettings *settings;
     QAction *rotateAction;
+    Browser *browser;
     LogWidget
         *logWidget,
         *dotWidgetAffordances,
@@ -93,65 +95,14 @@ private:
     ProfileWidget *profileWidget;
     int progress;
     Data data;
-    void wait(bool force = false, int timeout = 1);
-    void runJs(const QString &code);
-    int intFromJs(const QString &code);
-    QString stringFromJs(const QString &code);
-    void recurse(
-        Data *data,
-        const QString &url,
-        QString &affordanceLabel,
-        QString &actionLabel,
-        int parentStateId,
-        int arrowType,
-        int profile);
-    void navigate(const QString &url);
     QString triggerString(int trigger);
 
     QString machineState();
     void setMachineState(const QString &s);
 
     QHash<int, QString> nodeNames, linkNames;
-    QString makeState(int i, const QString &title);
-    int linkType(const QString &original, const QString &href);
-    bool locationInScope(const QString &currentLocation, const QString &original);
-    QString linkLabel(const QString &current, const QString &href);
-    QString truncateString(const QString &s);
-    QString flattenString(const QString &s);
 
     QString arrowVectorToPullback(QVector<Arrow> &v);
     QString stateVectorToPullback(QVector<State> &v);
-    bool busy, stopFlag;
-};
-
-enum triggers {
-    TRIGGER_CLICK = 0,
-    TRIGGER_MOUSEDOWN,
-    TRIGGER_MOUSEUP,
-    TRIGGER_MOUSEOVER,
-    TRIGGER_SUBMIT,
-    TRIGGER_ARIA,
-    TRIGGER_LINK,
-    TRIGGER_INIT
-};
-
-enum linkTypes {
-    LINK_INTERNAL = 0,
-    LINK_RELATIVE,
-    LINK_SAME_HOST,
-    LINK_EXTERNAL
-};
-
-enum arrowTypes {
-    ARROW_TYPE_EVENT_CLICK = 0,
-    ARROW_TYPE_EVENT_MOUSEDOWN,
-    ARROW_TYPE_EVENT_MOUSEUP,
-    ARROW_TYPE_EVENT_MOUSEOVER,
-    ARROW_TYPE_EVENT_SUBMIT,
-    ARROW_TYPE_EVENT_ARIA,
-    ARROW_TYPE_LINK_EXTERNAL,
-    ARROW_TYPE_LINK_SAME_HOST,
-    ARROW_TYPE_LINK_FRAGMENT,
-    ARROW_TYPE_ACTION,
-    ARROW_TYPE_INIT
+    bool stopFlag, busyFlag;
 };

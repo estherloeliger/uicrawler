@@ -368,6 +368,29 @@ function state(intProfile)
     return s;
 }
 
+function nodePosition(intValIndex, intProfile)
+{
+    var index = parseInt(intValIndex);
+    var profile = parseInt(intProfile);
+    var nodes = nodeList(profile);
+    var count = nodes.length;
+
+    if (index >= count)
+    {
+        return "!indexoutofbounds";
+    }
+
+    var node = nodes[index];
+
+    if (node == null)
+    {
+        return "!node==null";
+    }
+
+    var s = node.offsetLeft + ":" + node.offsetTop;
+    return s;
+}
+
 function triggerAction(intValListener, intValIndex, intProfile)
 {
     var listener = parseInt(intValListener);

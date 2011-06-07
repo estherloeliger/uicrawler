@@ -8,6 +8,7 @@
 #include <QSet>
 #include <QRegExp>
 #include "mainwindow.h"
+#include "constants.h"
 
 FilterWidget::FilterWidget(QWidget *parent, const QString &title) :
     QDockWidget(title, parent)

@@ -19,7 +19,12 @@ SOURCES += main.cpp\
     logwidget.cpp \
     graphwidget.cpp \
     profilewidget.cpp \
-    filterwidget.cpp
+    filterwidget.cpp \
+    webpage.cpp \
+    modeler.cpp \
+    mystring.cpp \
+    browser.cpp \
+    arrow.cpp
 
 HEADERS  += mainwindow.h \
     logwidget.h \
@@ -28,7 +33,12 @@ HEADERS  += mainwindow.h \
     arrow.h \
     profilewidget.h \
     state.h \
-    filterwidget.h
+    filterwidget.h \
+    webpage.h \
+    modeler.h \
+    mystring.h \
+    constants.h \
+    browser.h
 RESOURCES = uicrawler.qrc
 
 FORMS +=
