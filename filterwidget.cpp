@@ -113,7 +113,7 @@ void FilterWidget::apply()
     actionFilter = filterString(actionsTree);
 
     parentWindow->visualizeAffordances(affordanceFilter);
-    parentWindow->visualizeActions(actionFilter);
+    //parentWindow->visualizeActions(actionFilter);
 }
 
 QString FilterWidget::filterString(QTreeWidget *tree)

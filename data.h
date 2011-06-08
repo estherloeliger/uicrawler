@@ -27,8 +27,6 @@ public:
     QVector<Arrow> actionEdges;
     QVector<Arrow> abstractEdges;
 
-    //QHash<int, QPair<int, QString> > mappingAffordanceToAbstract;
-    //QHash<int, QPair<int, QString> > mappingActionToAbstract;
     QSet<QString> mapAffordanceToAbstractEdges;
     QSet<QString> mapActionToAbstractEdges;
     QSet<QString> mapAffordanceToAbstractNodes;

@@ -194,7 +194,7 @@ void Modeler::recurse(
         }
     }
 
-    wait();
+    browser->wait(true);
 
     //actions
     code = "nodeCount(";
@@ -403,11 +403,12 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, in
         QString result;
 
         //special case: click event
+
         if (positionKnown && j == TRIGGER_CLICK)
         {
             QMouseEvent *event = new QMouseEvent(QEvent::MouseButtonPress, globalPos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
             QCoreApplication::postEvent(browser, event);
-            result = "===posted click event===";
+            result = "===posted click event by raising button press at screen location===";
         }
         else
         {
@@ -430,7 +431,7 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, in
         }
 
         if (result.isEmpty())
-            return true;
+            continue;
 
         logWidget->push(result);
 
@@ -561,7 +562,7 @@ bool Modeler::handleHyperlink(Data *data, int index, const QString &url, int sta
 
     logWidget->push("===set location to " + linkHrefAbsolute + "===\n");
 
-    wait();
+    browser->wait();
 
     arrowType = ARROW_TYPE_INIT;
     switch (linkType(url, linkHref))
