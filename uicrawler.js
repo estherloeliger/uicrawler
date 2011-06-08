@@ -1,14 +1,6 @@
-function nodeList(intProfile)
+function nodeList()
 {
-    var profile = parseInt(intProfile);
-
     var list = [];
-
-    //exit if profile dictates events only
-    if (profile == Profile.Links)
-    {
-        return list;
-    }
 
     var treeWalker = document.createTreeWalker(
             document.body,
@@ -34,18 +26,8 @@ function nodeList(intProfile)
             continue;
         }
 
-        //skip if invisible
-        if (
-                node.style.display == 'none' ||
-                node.style.visibility == 'hidden'
-        )
-        {
-            continue;
-        }
-
         //skip if no listeners
         var hasListener = 0;
-        var isAria = 0;
 
         //JQuery
         var events = $(node).data("events");
@@ -78,16 +60,9 @@ function nodeList(intProfile)
             node.getAttribute("aria-labelledby") != null)
         {
             hasListener = 1;
-            isAria = 1;
         }
 
         if (hasListener == 0)
-        {
-            continue;
-        }
-
-        //skip if PROFILE_WAI_ARIA and below cutoff
-        if (profile == Profile.Wai && isAria == 0)
         {
             continue;
         }
@@ -98,11 +73,37 @@ function nodeList(intProfile)
     return list;
 }
 
-function nodeText(intVal, intProfile)
+function nodeIsAria(intVal)
 {
     var i = parseInt(intVal);
-    var profile = parseInt(intProfile);
-    var nodes = nodeList(profile);
+    var nodes = nodeList();
+    if (i >= nodes.length)
+        return '';
+
+    var node = nodes[i];
+    return (node.getAttribute("aria-label") != null ||
+            node.getAttribute("aria-labelledby") != null);
+}
+
+function nodeIsVisible(intVal)
+{
+    var i = parseInt(intVal);
+    var nodes = nodeList();
+    if (i >= nodes.length)
+        return '';
+
+    var node = nodes[i];
+
+    return (
+            node.style.display != 'none' &&
+            node.style.visibility != 'hidden' //tbd: add JQuery visibility selectors
+    );
+}
+
+function nodeText(intVal)
+{
+    var i = parseInt(intVal);
+    var nodes = nodeList();
     if (i >= nodes.length)
         return '';
 
@@ -121,100 +122,70 @@ function nodeText(intVal, intProfile)
     return nodes[i].textContent;
 }
 
-function nodeName(intVal, intProfile)
+function nodeName(intVal)
 {
     var i = parseInt(intVal);
-    var profile = parseInt(intProfile);
-    var nodes = nodeList(profile);
+    var nodes = nodeList();
     if (i >= nodes.length)
         return '';
     return nodes[i].nodeName;
 }
 
-function linkText(intVal, intProfile)
+function linkText(intVal)
 {
     var i = parseInt(intVal);
-    var profile = parseInt(intProfile);
-    var links = hyperlinkList(profile);
+    var links = hyperlinkList();
     if (i >= links.length)
         return '';
     return links[i].textContent;
 }
 
-function linkHref(intVal, intProfile)
+function linkHref(intVal)
 {
     var i = parseInt(intVal);
-    var profile = parseInt(intProfile);
-    var links = hyperlinkList(profile);
+    var links = hyperlinkList();
     if (i >= links.length)
         return '';
     return links[i].getAttribute('href');
 }
 
-function linkHrefAbsolute(intVal, intProfile)
+function linkHrefAbsolute(intVal)
 {
     var i = parseInt(intVal);
-    var profile = parseInt(intProfile);
-    var links = hyperlinkList(profile);
+    var links = hyperlinkList();
     if (i >= links.length)
         return '';
     return links[i].href;
 }
 
-function stats(intProfile)
+function stats()
 {
-    var profile = parseInt(intProfile);
     var str = "===stats===\nnodes with listeners: ";
-    str += nodeList(profile).length;
+    str += nodeList().length;
     str += "\nhyperlinks: ";
-    str += hyperlinkList(profile).length;
+    str += hyperlinkList().length;
     str += "\n===stats end===\n";
     return str;
 }
 
-function nodeCount(intProfile)
+function nodeCount()
 {
-    var profile = parseInt(intProfile);
-    return nodeList(profile).length;
+    return nodeList().length;
 }
 
-function hyperlinkCount(intProfile)
+function hyperlinkCount()
 {
-    var profile = parseInt(intProfile);
-    return hyperlinkList(profile).length;
+    return hyperlinkList().length;
 }
 
-function hyperlinkList(intProfile)
+function hyperlinkList()
 {
-    var profile = parseInt(intProfile);
-
     var list = [];
-
-    //exit if profile dictates events only
-    if (profile == Profile.Events)
-        return list;
 
     var anchors = document.getElementsByTagName('a');
     for (var i = 0; i < anchors.length; i++)
     {
         var anchor = anchors[i];
-        var isAria = 0;
-
-        //skip if invisible
-        if (
-                anchor.style.display == 'none' ||
-                anchor.style.visibility == 'hidden'
-        )
-        {
-            continue;
-        }
-
-        if (
-            anchor.getAttribute("aria-label") != null ||
-            anchor.getAttribute("aria-labelledby") != null)
-        {
-            isAria = 1;
-        }
 
         var href = anchor.getAttribute('href');
 
@@ -222,20 +193,58 @@ function hyperlinkList(intProfile)
         if (href == null)
             continue;
 
-        //skip if PROFILE_WAI_ARIA and below cutoff
-        if (profile == Profile.Wai && isAria == 0)
-        {
-            continue;
-        }
-
         list.push(anchor);
     }
     return list;
 }
 
-function state(intProfile)
+function linkIsVisible(intVal)
 {
-    var profile = parseInt(intProfile);
+    var i = parseInt(intVal);
+    var hyperlinks = hyperlinkList();
+    var count = hyperlinks.length;
+
+    if (intVal >= count)
+    {
+        return 0;
+    }
+
+    var link = links[i];
+
+    return (
+            link.style.display != 'none' &&
+            link.style.visibility != 'hidden' //tbd: add JQuery visibility selectors
+    );
+}
+
+function linkIsAria(intVal)
+{
+    var i = parseInt(intVal);
+    var hyperlinks = hyperlinkList();
+    var count = hyperlinks.length;
+
+    if (intVal >= count)
+    {
+        return 0;
+    }
+
+    var link = links[i];
+
+    return (link.getAttribute("aria-label") != null ||
+            link.getAttribute("aria-labelledby") != null);
+}
+
+function linkText(intVal)
+{
+    var i = parseInt(intVal);
+    var links = hyperlinkList();
+    if (i >= links.length)
+        return '';
+    return links[i].textContent;
+}
+
+function state()
+{
     var s;
 
     s = "===state===\n";
@@ -243,23 +252,9 @@ function state(intProfile)
     s += document.title;
     s += "\n";
 
-
-    /*
-    s += "url ";
-    s += document.location.href;
-    s += "\n";
-    */
-
-    /*
-    s += "hash ";
-    var hash = hex_sha1(document.body.innerHTML);
-    s += hash;
-    s += "\n";
-    */
-
     var listenerCount = 0;
 
-    var nodes = nodeList(profile);
+    var nodes = nodeList();
     var nodeCount = nodes.length;
 
     for (var i = 0; i < nodeCount; i++)
@@ -338,7 +333,7 @@ function state(intProfile)
     }
 
     //links
-    var hyperlinks = hyperlinkList(profile);
+    var hyperlinks = hyperlinkList();
     var hyperlinksCount = hyperlinks.length;
     if (hyperlinksCount == 0)
     {
@@ -368,11 +363,10 @@ function state(intProfile)
     return s;
 }
 
-function nodePosition(intValIndex, intProfile)
+function nodePosition(intValIndex)
 {
     var index = parseInt(intValIndex);
-    var profile = parseInt(intProfile);
-    var nodes = nodeList(profile);
+    var nodes = nodeList();
     var count = nodes.length;
 
     if (index >= count)
@@ -391,12 +385,11 @@ function nodePosition(intValIndex, intProfile)
     return s;
 }
 
-function triggerAction(intValListener, intValIndex, intProfile)
+function triggerAction(intValListener, intValIndex)
 {
     var listener = parseInt(intValListener);
     var index = parseInt(intValIndex);
-    var profile = parseInt(intProfile);
-    var nodes = nodeList(profile);
+    var nodes = nodeList();
     var count = nodes.length;
 
     if (index >= count)
@@ -516,11 +509,10 @@ function triggerAction(intValListener, intValIndex, intProfile)
     return '';
 }
 
-function followLink(intVal, intProfile)
+function followLink(intVal)
 {
     var i = parseInt(intVal);
-    var profile = parseInt(intProfile);
-    var hyperlinks = hyperlinkList(profile);
+    var hyperlinks = hyperlinkList();
     var count = hyperlinks.length;
 
     if (intVal >= count)
@@ -530,34 +522,6 @@ function followLink(intVal, intProfile)
         s += " out of range===\n";
         return s;
     }
-
-    /*
-    //exp: simulate click event - keep for JS hrefs
-    var href = hyperlinks[intVal].getAttribute('href');
-    if (href != null)
-    {
-        var event = document.createEvent("MouseEvents");
-        event.initEvent("click", true, true);
-        hyperlinks[intVal].dispatchEvent(event);
-        var s = "===follow link to ";
-        s += href;
-        s += "===\n";
-        return s;
-    }
-    */
-
-    /*
-    //backup: follow href; no changes
-    var href = hyperlinks[intVal].getAttribute('href');
-    if (href != null)
-    {
-        window.location = href;
-        var s = "===set location to ";
-        s += href;
-        s += "===\n";
-        return s;
-    }
-    */
 
     var href = hyperlinks[intVal].getAttribute("href");
     if (href != null && href[0] == '#')
@@ -605,14 +569,6 @@ var Listener =
     OnAria:5
 }
 
-var Profile =
-{
-    Default:0,
-    Wai:1,
-    Events:2,
-    Links:3
-}
-
 //http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
 function hashCode(str)
 {
@@ -630,4 +586,12 @@ function hashCode(str)
     }
 
     return hash;
+}
+
+var Profile =
+{
+    Default:0,
+    Wai:1,
+    Events:2,
+    Links:3
 }

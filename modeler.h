@@ -18,11 +18,11 @@ public:
             LogWidget *logWidget,
             QSet<QString> *blacklist,
             bool *stopFlag);
-    bool run(Data *data, const QString &url, int profile);
+    bool run(Data *data, const QString &url);
 private:
     QString arrowsToMapString(const Arrow &a, const Arrow &b);
-    bool handleAction(Data *data, int index, int stateId, int arrowType, int profile, const QString &origin);
-    bool handleHyperlink(Data *data, int index, const QString &url, int stateId, int arrowType, int profile, const QString &origin);
+    bool handleAction(Data *data, int index, int stateId, int arrowType, const QString &origin);
+    bool handleHyperlink(Data *data, int index, const QString &url, int stateId, int arrowType, const QString &origin);
     QString linkLabel(const QString &current, const QString &href);
     int linkType(const QString &original, const QString &href);
     bool locationInScope(const QString &currentLocation, const QString &original);
@@ -33,8 +33,7 @@ private:
         QString &actionLabel,
         int parentStateId,
         int arrowType,
-        int arrowFlags,
-        int profile);
+        int arrowFlags);
     Browser *browser;
     LogWidget *logWidget;
     QSet<QString> *blacklist;

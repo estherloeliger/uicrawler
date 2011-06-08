@@ -366,7 +366,7 @@ void MainWindow::model()
     if (isWebsiteModel)
     {
         Modeler modeler(browser, logWidget, &blacklist, &stopFlag);
-        modeler.run(&data, url, profile);
+        modeler.run(&data, url);
 
         filterWidget->refreshAffordances(data.affordanceEdges);
 
@@ -383,7 +383,7 @@ void MainWindow::model()
             data.originalUrl = data.lastLocalUrl = url;
 
             Modeler modeler(browser, logWidget, &blacklist, &stopFlag);
-            modeler.run(&data, url, 0);
+            modeler.run(&data, url);
         }
 
         filterWidget->refreshActions(data.actionEdges);

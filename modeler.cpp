@@ -16,7 +16,7 @@ Modeler::Modeler(
 {
 }
 
-bool Modeler::run(Data *data, const QString &url, int profile)
+bool Modeler::run(Data *data, const QString &url)
 {
     QString label = "init";
 
@@ -27,8 +27,7 @@ bool Modeler::run(Data *data, const QString &url, int profile)
         label, //action label
         0, //state
         ARROW_TYPE_INIT, //arrow type
-        0, //arrow flags
-        profile //profile
+        0 //arrow flags
     );
 
     if (*stopFlag)
@@ -47,8 +46,7 @@ void Modeler::recurse(
         QString &actionLabel,
         int parentStateId,
         int arrowType,
-        int arrowFlags,
-        int profile)
+        int arrowFlags)
 {
     //exit condition 1: limit total number of states
     if (data->counter >= STATE_MAX)
@@ -197,9 +195,7 @@ void Modeler::recurse(
     browser->wait(true);
 
     //actions
-    code = "nodeCount(";
-    code += QString::number(profile);
-    code += ")";
+    code = "nodeCount()";
     int count = browser->JStoInt(code);
 
     QString origin;
@@ -207,19 +203,17 @@ void Modeler::recurse(
 
     for (int i = 0; i < count; i++)
     {
-        if (!handleAction(data, i, stateId, arrowType, profile, origin))
+        if (!handleAction(data, i, stateId, arrowType, origin))
             break;
     }
 
     //hyperlinks
-    code = "hyperlinkCount(";
-    code += QString::number(profile);
-    code += ")";
+    code = "hyperlinkCount()";
     count = browser->JStoInt(code);
 
     for (int i = 0; i < count; i++)
     {
-        if (!handleHyperlink(data, i, url, stateId, arrowType, profile, origin))
+        if (!handleHyperlink(data, i, url, stateId, arrowType, origin))
             break;
     }
 
@@ -319,7 +313,7 @@ QString Modeler::arrowsToMapString(const Arrow &a, const Arrow &b)
     return s;
 }
 
-bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, int profile, const QString &origin)
+bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, const QString &origin)
 {
     if (*stopFlag)
     {
@@ -331,16 +325,12 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, in
     //determine nodename
     code = "nodeName(";
     code += QString::number(index);
-    code += ", ";
-    code += QString::number(profile);
     code += ")";
     QString nodeName = browser->JStoString(code);//stringFromJs(code);
 
     //determine node text
     code = "nodeText(";
     code += QString::number(index);
-    code += ", ";
-    code += QString::number(profile);
     code += ")";
     QString nodeText = browser->JStoString(code);
 
@@ -363,10 +353,8 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, in
         //position mouse above node
         code = "nodePosition(";
         code += QString::number(index);
-        code += ", ";
-        code += QString::number(profile);
         code += ")";
-        QString posString = browser->JStoString(code);//stringFromJs(code);
+        QString posString = browser->JStoString(code);
 
         qDebug() << "local pos string: " << posString;
 
@@ -418,8 +406,6 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, in
             code += QString::number(j); //event types
             code += ", ";
             code += QString::number(index); //index
-            code += ", ";
-            code += QString::number(profile);
             code += ")";
 
             result = browser->JStoString(code);
@@ -483,8 +469,26 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, in
         }
 
         int arrowFlags = 0;
+
         arrowFlags |= ARROW_FLAG_EVENT;
-        arrowFlags |= ARROW_FLAG_VISIBLE;
+
+        //visibility
+        {
+            code = "nodeIsVisible(";
+            code += QString::number(index);
+            code += ")";
+            if (browser->JStoInt(code))
+                arrowFlags |= ARROW_FLAG_VISIBLE;
+        }
+
+        //aria
+        {
+            code = "nodeIsAria(";
+            code += QString::number(index);
+            code += ")";
+            if (browser->JStoInt(code))
+                arrowFlags |= ARROW_FLAG_ARIA;
+        }
 
         recurse(
             data,
@@ -493,15 +497,14 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, in
             actionLabel,
             stateId,
             arrowType,
-            arrowFlags,
-            profile
+            arrowFlags
         );
         browser->navigate(origin);
     }
     return true;
 }
 
-bool Modeler::handleHyperlink(Data *data, int index, const QString &url, int stateId, int arrowType, int profile, const QString &origin)
+bool Modeler::handleHyperlink(Data *data, int index, const QString &url, int stateId, int arrowType, const QString &origin)
 {
     if (*stopFlag)
     {
@@ -512,24 +515,18 @@ bool Modeler::handleHyperlink(Data *data, int index, const QString &url, int sta
 
     code = "linkText(";
     code += QString::number(index);
-    code += ", ";
-    code += QString::number(profile);
     code += ")";
-    linkText = browser->JStoString(code);//stringFromJs(code);
+    linkText = browser->JStoString(code);
 
     code = "linkHref(";
     code += QString::number(index);
-    code += ", ";
-    code += QString::number(profile);
     code += ")";
-    linkHref = browser->JStoString(code);//stringFromJs(code);
+    linkHref = browser->JStoString(code);
 
     code = "linkHrefAbsolute(";
     code += QString::number(index);
-    code += ", ";
-    code += QString::number(profile);
     code += ")";
-    linkHrefAbsolute = browser->JStoString(code);//stringFromJs(code);
+    linkHrefAbsolute = browser->JStoString(code);
 
     //skip conditions
     if (
@@ -585,13 +582,12 @@ bool Modeler::handleHyperlink(Data *data, int index, const QString &url, int sta
 
     recurse(
         data,
-        browser->url().toString(),//this->locationEdit->text(),
+        browser->url().toString(),
         affordanceLabel,
         actionLabel,
         stateId,
         arrowType,
-        arrowFlags,
-        profile
+        arrowFlags
     );
 
     browser->navigate(origin);
