@@ -7,6 +7,7 @@
 #include "graphwidget.h"
 #include "profilewidget.h"
 #include "filterwidget.h"
+#include "mappingwidget.h"
 #include "state.h"
 #include "webpage.h"
 #include "modeler.h"
@@ -148,14 +149,20 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     dotWidgetAbstract = new LogWidget(this, "Abs");
     dotWidgetAbstract->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetMappingAffordance = new LogWidget(this, "Aff -> Abs");
-    dotWidgetMappingAffordance->setAllowedAreas(Qt::RightDockWidgetArea);
+    //dotWidgetMappingAffordance = new LogWidget(this, "Aff -> Abs");
+    //dotWidgetMappingAffordance->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetMappingAction = new LogWidget(this, "Act -> Abs");
-    dotWidgetMappingAction->setAllowedAreas(Qt::RightDockWidgetArea);
+    //dotWidgetMappingAction = new LogWidget(this, "Act -> Abs");
+    //dotWidgetMappingAction->setAllowedAreas(Qt::RightDockWidgetArea);
 
     dotWidgetPullback = new LogWidget(this, "Pullback");
     dotWidgetPullback->setAllowedAreas(Qt::RightDockWidgetArea);
+
+    mappingWidgetAffordance = new MappingWidget(this, "Aff -> Abs");
+    mappingWidgetAffordance->setAllowedAreas(Qt::RightDockWidgetArea);
+
+    mappingWidgetAction = new MappingWidget(this, "Act -> Abs");
+    mappingWidgetAction->setAllowedAreas(Qt::RightDockWidgetArea);
 
     graphWidgetAffordances = new GraphWidget(this, "Aff graph");
     graphWidgetAffordances->setAllowedAreas(Qt::BottomDockWidgetArea);
@@ -175,9 +182,11 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAffordances);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetActions);    
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAbstract);
-    addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAffordance);
-    addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAction);
+    //addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAffordance);
+    //addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAction);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetPullback);
+    addDockWidget(Qt::RightDockWidgetArea, mappingWidgetAffordance);
+    addDockWidget(Qt::RightDockWidgetArea, mappingWidgetAction);
     addDockWidget(Qt::RightDockWidgetArea, profileWidget);
 
     addDockWidget(Qt::BottomDockWidgetArea, graphWidgetAffordances);
@@ -187,9 +196,11 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     this->tabifyDockWidget(logWidget, dotWidgetAffordances);
     this->tabifyDockWidget(logWidget, dotWidgetActions);
     this->tabifyDockWidget(logWidget, dotWidgetAbstract);
-    this->tabifyDockWidget(logWidget, dotWidgetMappingAffordance);
-    this->tabifyDockWidget(logWidget, dotWidgetMappingAction);
+    //this->tabifyDockWidget(logWidget, dotWidgetMappingAffordance);
+    //this->tabifyDockWidget(logWidget, dotWidgetMappingAction);
     this->tabifyDockWidget(logWidget, dotWidgetPullback);
+    this->tabifyDockWidget(logWidget, mappingWidgetAffordance);
+    this->tabifyDockWidget(logWidget, mappingWidgetAction);
     this->tabifyDockWidget(logWidget, filterWidget);
     this->tabifyDockWidget(logWidget, profileWidget);
     logWidget->raise();
@@ -324,8 +335,8 @@ void MainWindow::clearLogs(bool clearInputDotWidgets)
         dotWidgetAffordances->clear();
         dotWidgetActions->clear();
         dotWidgetAbstract->clear();
-        dotWidgetMappingAction->clear();
-        dotWidgetMappingAffordance->clear();
+        //dotWidgetMappingAction->clear();
+        //dotWidgetMappingAffordance->clear();
     }
     filterWidget->clear();
     dotWidgetPullback->clear();
@@ -359,7 +370,7 @@ void MainWindow::model()
     logWidget->raise();
     logWidget->push("=== model ===\n");
 
-    int profile = profileWidget->row();
+    //int profile = profileWidget->row();
 
     QString label = "init";
 
@@ -370,11 +381,12 @@ void MainWindow::model()
 
         filterWidget->refreshAffordances(data.affordanceEdges);
 
-        refreshMapping(data.mapAffordanceToAbstractNodes, data.mapAffordanceToAbstractEdges, dotWidgetMappingAffordance);
-        refreshMapping(data.mapActionToAbstractNodes, data.mapActionToAbstractEdges, dotWidgetMappingAction);
+        //refreshMapping(data.mapAffordanceToAbstractNodes, data.mapAffordanceToAbstractEdges, dotWidgetMappingAffordance);
+        //refreshMapping(data.mapActionToAbstractNodes, data.mapActionToAbstractEdges, dotWidgetMappingAction);
 
         visualizeAffordances(""); //no filter
 
+        /*
         if (profile != 0)
         {
             logWidget->push("===default profile model===");
@@ -385,9 +397,13 @@ void MainWindow::model()
             Modeler modeler(browser, logWidget, &blacklist, &stopFlag);
             modeler.run(&data, url);
         }
+        */
 
         filterWidget->refreshActions(data.actionEdges);
         visualizeActions(""); //no filter
+
+        mappingWidgetAffordance->refresh(data.mapAffordanceToAbstractEdges);
+        mappingWidgetAction->refresh(data.mapActionToAbstractEdges);
     }
     else
     {
@@ -768,8 +784,8 @@ QString MainWindow::machineState()
     affordances = dotWidgetAffordances->text();
     actions = dotWidgetActions->text();
     abstract = dotWidgetAbstract->text();
-    mappingAffordance = dotWidgetMappingAffordance->text();
-    mappingAction = dotWidgetMappingAction->text();
+    //mappingAffordance = dotWidgetMappingAffordance->text();
+    //mappingAction = dotWidgetMappingAction->text();
     pullback = dotWidgetPullback->text();
     affordances.replace("\n", "__RETURN__");
     actions.replace("\n", "__RETURN__");
@@ -830,8 +846,8 @@ void MainWindow::setMachineState(const QString &s)
     dotWidgetAffordances->setText(affordances);
     dotWidgetActions->setText(actions);
     dotWidgetAbstract->setText(abstract);
-    dotWidgetMappingAffordance->setText(mappingAffordance);
-    dotWidgetMappingAction->setText(mappingAction);
+    //dotWidgetMappingAffordance->setText(mappingAffordance);
+    //dotWidgetMappingAction->setText(mappingAction);
     dotWidgetPullback->setText(pullback);
 
     //update graphical views
@@ -953,9 +969,9 @@ void MainWindow::refreshPullback()
     buffer += arrowVectorToPullback(actionArrows);
     buffer += stateVectorToPullback(abstractStates);
     buffer += arrowVectorToPullback(abstractArrows);
-    buffer += this->dotWidgetMappingAffordance->text();
-    buffer += "\n";
-    buffer += this->dotWidgetMappingAction->text();
+    //buffer += this->dotWidgetMappingAffordance->text();
+    //buffer += "\n";
+    //buffer += this->dotWidgetMappingAction->text();
 
     //fetch dot file from Haskell routine
     QString tempPath = QDir::tempPath();

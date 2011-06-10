@@ -6,6 +6,7 @@
 #include <QString>
 #include <QVector>
 #include <QSet>
+#include <QPair>
 #include "arrow.h"
 #include "state.h"
 
@@ -27,8 +28,10 @@ public:
     QVector<Arrow> actionEdges;
     QVector<Arrow> abstractEdges;
 
-    QSet<QString> mapAffordanceToAbstractEdges;
-    QSet<QString> mapActionToAbstractEdges;
+    //QSet<QString> mapAffordanceToAbstractEdges;
+    //QSet<QString> mapActionToAbstractEdges;
+    QVector<QPair<Arrow, Arrow> > mapAffordanceToAbstractEdges;
+    QVector<QPair<Arrow, Arrow> > mapActionToAbstractEdges;
     QSet<QString> mapAffordanceToAbstractNodes;
     QSet<QString> mapActionToAbstractNodes;
 

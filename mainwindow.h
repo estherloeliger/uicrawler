@@ -11,6 +11,7 @@ class LogWidget;
 class GraphWidget;
 class ProfileWidget;
 class FilterWidget;
+class MappingWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -83,8 +84,8 @@ private:
         *dotWidgetAffordances,
         *dotWidgetActions,
         *dotWidgetAbstract,
-        *dotWidgetMappingAffordance,
-        *dotWidgetMappingAction,
+        //*dotWidgetMappingAffordance,
+        //*dotWidgetMappingAction,
         *dotWidgetPullback;
     GraphWidget
         *graphWidgetAffordances,
@@ -93,6 +94,7 @@ private:
         *graphWidgetPullback;
     FilterWidget *filterWidget;
     ProfileWidget *profileWidget;
+    MappingWidget *mappingWidgetAffordance, *mappingWidgetAction;
     int progress;
     Data data;
     QString triggerString(int trigger);

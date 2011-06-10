@@ -24,7 +24,8 @@ SOURCES += main.cpp\
     modeler.cpp \
     mystring.cpp \
     browser.cpp \
-    arrow.cpp
+    arrow.cpp \
+    mappingwidget.cpp
 
 HEADERS  += mainwindow.h \
     logwidget.h \
@@ -38,7 +39,8 @@ HEADERS  += mainwindow.h \
     modeler.h \
     mystring.h \
     constants.h \
-    browser.h
+    browser.h \
+    mappingwidget.h
 RESOURCES = uicrawler.qrc
 
 FORMS +=

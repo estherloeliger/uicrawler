@@ -100,7 +100,7 @@ void Modeler::recurse(
 
         if (affordanceLabel != "init")
         {
-            data->mapAffordanceToAbstractEdges.insert(arrowsToMapString(affordanceArrow, actionArrow));//mapping
+            data->mapAffordanceToAbstractEdges.append(qMakePair(affordanceArrow, actionArrow));//arrowsToMapString(affordanceArrow, actionArrow));//mapping
         }
 
         if (!data->actionEdges.contains(actionArrow))
@@ -110,7 +110,7 @@ void Modeler::recurse(
             data->abstractEdges.append(actionArrow); //interim: abstract == action graph
             if(actionLabel != "init")
             {
-                data->mapActionToAbstractEdges.insert(arrowsToMapString(actionArrow, actionArrow));//mapping
+                data->mapActionToAbstractEdges.append(qMakePair(actionArrow, actionArrow));//arrowsToMapString(actionArrow, actionArrow));//mapping
             }
         }
 
@@ -151,7 +151,7 @@ void Modeler::recurse(
         //mapping
         if(affordanceLabel != "init")
         {
-            data->mapAffordanceToAbstractEdges.insert(arrowsToMapString(affordanceArrow, actionArrow));
+            data->mapAffordanceToAbstractEdges.append(qMakePair(affordanceArrow, actionArrow));//arrowsToMapString(affordanceArrow, actionArrow));
         }
         QString affordanceStateTitle, actionStateTitle;
         affordanceStateTitle = (data->affordanceStateTitles.count(stateId)) ?
@@ -172,7 +172,7 @@ void Modeler::recurse(
             data->actionStateTitles.insert(data->actionCounter, stateTitle);
             if(actionLabel != "init")
             {
-                data->mapActionToAbstractEdges.insert(arrowsToMapString(actionArrow, actionArrow));//mapping
+                data->mapActionToAbstractEdges.append(qMakePair(actionArrow, actionArrow));//arrowsToMapString(actionArrow, actionArrow));//mapping
             }
         }
 
