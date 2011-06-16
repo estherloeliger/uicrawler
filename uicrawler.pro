@@ -25,7 +25,8 @@ SOURCES += main.cpp\
     mystring.cpp \
     browser.cpp \
     arrow.cpp \
-    mappingwidget.cpp
+    mappingwidget.cpp \
+    popuplistwidget.cpp
 
 HEADERS  += mainwindow.h \
     logwidget.h \
@@ -40,7 +41,8 @@ HEADERS  += mainwindow.h \
     mystring.h \
     constants.h \
     browser.h \
-    mappingwidget.h
+    mappingwidget.h \
+    popuplistwidget.h
 RESOURCES = uicrawler.qrc
 
 FORMS +=

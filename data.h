@@ -12,7 +12,7 @@
 
 class Data {
 public:
-    Data() : counter(0), idCounter(0), affordanceCounter(0), actionCounter(0), abstractCounter(0) { }
+    Data() : counter(0), idCounter(0), affordanceCounter(0), actionCounter(0), abstractCounter(0), skipOutOfScopeUrls(false) { }
 
     QHash<QString, int> states;
 
@@ -38,6 +38,7 @@ public:
     QString originalUrl, lastLocalUrl;
 
     int counter, idCounter, affordanceCounter, actionCounter, abstractCounter;
+    bool skipOutOfScopeUrls;
     void clear()
     {
         states.clear();

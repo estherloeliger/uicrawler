@@ -84,8 +84,6 @@ private:
         *dotWidgetAffordances,
         *dotWidgetActions,
         *dotWidgetAbstract,
-        //*dotWidgetMappingAffordance,
-        //*dotWidgetMappingAction,
         *dotWidgetPullback;
     GraphWidget
         *graphWidgetAffordances,
@@ -106,5 +104,5 @@ private:
 
     QString arrowVectorToPullback(QVector<Arrow> &v);
     QString stateVectorToPullback(QVector<State> &v);
-    bool stopFlag, busyFlag;
+    bool stopFlag, busyFlag, skipOutOfScopeUrls;
 };

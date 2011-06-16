@@ -132,10 +132,36 @@ void Modeler::recurse(
     }
     else //all other arrows
     {
+        //don't create nodes if out of scope and skipOutOfScopeUrls == true
+        if (
+                data->skipOutOfScopeUrls == true && (
+                    this->linkType(data->originalUrl, url) == LINK_EXTERNAL ||
+                    !locationInScope(
+                        browser->url().toString(),
+                        data->originalUrl))
+                )
+        {
+            QString log = "===omitted out-of-scope address ";
+            log += url;
+            log += "; returning to ";
+            log += data->lastLocalUrl;
+            log += "===\n";
+            logWidget->push(log);
+            browser->navigate(data->lastLocalUrl);
+            return;
+        }
+
         (data->counter)++;
         (data->affordanceCounter)++;
         stateId = data->counter;
         data->states.insert(state, stateId);
+
+        QString log = "===added state ";
+        log += QString::number(data->counter - 1);
+        log += " ";
+        log += stateTitle;
+        log += "===";
+        logWidget->push(log);
 
         data->affordanceStateTitles.insert(stateId, stateTitle);
         data->actionStateTitles.insert(stateId, stateTitle);
@@ -178,7 +204,7 @@ void Modeler::recurse(
 
         if (this->linkType(data->originalUrl, url) == LINK_EXTERNAL ||
             !locationInScope(
-                    browser->url().toString(),//locationEdit->text(),
+                    browser->url().toString(),
                     data->originalUrl))
         {
             QString log = "===transported to out-of-scope address ";

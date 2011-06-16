@@ -25,6 +25,8 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     blacklistString = settings->value("blacklistString", "").toString();
     updateBlacklist();
 
+    skipOutOfScopeUrls = settings->value("skipOutOfScopeUrls", true).toBool();
+
     QString pathDefault;
 #ifdef Q_WS_WIN
     pathDefault = QDir::homePath();
@@ -149,12 +151,6 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     dotWidgetAbstract = new LogWidget(this, "Abs");
     dotWidgetAbstract->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    //dotWidgetMappingAffordance = new LogWidget(this, "Aff -> Abs");
-    //dotWidgetMappingAffordance->setAllowedAreas(Qt::RightDockWidgetArea);
-
-    //dotWidgetMappingAction = new LogWidget(this, "Act -> Abs");
-    //dotWidgetMappingAction->setAllowedAreas(Qt::RightDockWidgetArea);
-
     dotWidgetPullback = new LogWidget(this, "Pullback");
     dotWidgetPullback->setAllowedAreas(Qt::RightDockWidgetArea);
 
@@ -182,8 +178,6 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAffordances);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetActions);    
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetAbstract);
-    //addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAffordance);
-    //addDockWidget(Qt::RightDockWidgetArea, dotWidgetMappingAction);
     addDockWidget(Qt::RightDockWidgetArea, dotWidgetPullback);
     addDockWidget(Qt::RightDockWidgetArea, mappingWidgetAffordance);
     addDockWidget(Qt::RightDockWidgetArea, mappingWidgetAction);
@@ -196,8 +190,6 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     this->tabifyDockWidget(logWidget, dotWidgetAffordances);
     this->tabifyDockWidget(logWidget, dotWidgetActions);
     this->tabifyDockWidget(logWidget, dotWidgetAbstract);
-    //this->tabifyDockWidget(logWidget, dotWidgetMappingAffordance);
-    //this->tabifyDockWidget(logWidget, dotWidgetMappingAction);
     this->tabifyDockWidget(logWidget, dotWidgetPullback);
     this->tabifyDockWidget(logWidget, mappingWidgetAffordance);
     this->tabifyDockWidget(logWidget, mappingWidgetAction);
@@ -224,6 +216,7 @@ MainWindow::~MainWindow()
     QVariant lastOpenedFileVariant(lastOpenedFile);
     settings->setValue("blacklistString", blacklistStringVariant);
     settings->setValue("lastOpenedFile", lastOpenedFileVariant);
+    settings->setValue("skipOutOfScopeUrls", skipOutOfScopeUrls);
     delete settings;
 }
 
@@ -366,11 +359,10 @@ void MainWindow::model()
     data.clear();
     stopFlag = false;
     data.originalUrl = data.lastLocalUrl = url;
+    data.skipOutOfScopeUrls = skipOutOfScopeUrls;
 
     logWidget->raise();
     logWidget->push("=== model ===\n");
-
-    //int profile = profileWidget->row();
 
     QString label = "init";
 
@@ -385,19 +377,6 @@ void MainWindow::model()
         //refreshMapping(data.mapActionToAbstractNodes, data.mapActionToAbstractEdges, dotWidgetMappingAction);
 
         visualizeAffordances(""); //no filter
-
-        /*
-        if (profile != 0)
-        {
-            logWidget->push("===default profile model===");
-            data.clear();
-            stopFlag = false;
-            data.originalUrl = data.lastLocalUrl = url;
-
-            Modeler modeler(browser, logWidget, &blacklist, &stopFlag);
-            modeler.run(&data, url);
-        }
-        */
 
         filterWidget->refreshActions(data.actionEdges);
         visualizeActions(""); //no filter
@@ -969,9 +948,10 @@ void MainWindow::refreshPullback()
     buffer += arrowVectorToPullback(actionArrows);
     buffer += stateVectorToPullback(abstractStates);
     buffer += arrowVectorToPullback(abstractArrows);
-    //buffer += this->dotWidgetMappingAffordance->text();
-    //buffer += "\n";
-    //buffer += this->dotWidgetMappingAction->text();
+    buffer += mappingWidgetAffordance->toString();
+    buffer += "\n";
+    buffer += mappingWidgetAction->toString();
+    buffer += "\n";
 
     //fetch dot file from Haskell routine
     QString tempPath = QDir::tempPath();
