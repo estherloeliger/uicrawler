@@ -1,11 +1,11 @@
-#include "arrow.h"
 #include "mappingwidget.h"
+#include "data.h"
 #include "popuplistwidget.h"
 #include <QTreeWidget>
 #include <QtGui>
 
-MappingWidget::MappingWidget(QWidget *parent, const QString &title) :
-    QDockWidget(title, parent), listWidget(0)
+MappingWidget::MappingWidget(QWidget *parent, const QString &title, Data *dataP, int typeP) :
+    QDockWidget(title, parent), data(dataP), type(typeP)
 {
     treeWidget = new QTreeWidget(this);
     treeWidget->setColumnCount(2);
@@ -21,13 +21,11 @@ MappingWidget::MappingWidget(QWidget *parent, const QString &title) :
     connect(treeWidget, SIGNAL(itemDoubleClicked (QTreeWidgetItem*,int)), this, SLOT(clickHandler())); //double click
     connect(treeWidget, SIGNAL(itemActivated(QTreeWidgetItem*,int)), this, SLOT(clickHandler())); //e.g. enter pressed
 
-
     listWidget = new PopupListWidget(this);
-    listWidget->setWindowFlags(Qt::Popup | Qt::Window | Qt::WindowCloseButtonHint);
+    listWidget->setWindowFlags(Qt::Popup);
     connect(listWidget, SIGNAL( itemActivated(QListWidgetItem *) ), this, SLOT( popupSelectionHandler(QListWidgetItem *) ) );
 
     noTargetString = "---";
-    cancelString = "Cancel";
 }
 
 void MappingWidget::clickHandler()
@@ -46,16 +44,16 @@ void MappingWidget::clickHandler()
     source = item->text(0);
     destination = item->text(1);
 
-    int index = allTargetItems.indexOf(destination);
+    int index = allTargetStrings.indexOf(destination);
     if (index == -1)
         index = 0;
 
     listWidget->clear();
 
-    int itemsCount = allTargetItems.count();
+    int itemsCount = allTargetStrings.count();
     for (int i = 0; i < itemsCount; i++)
     {
-        listWidget->addItem(allTargetItems.at(i));
+        listWidget->addItem(allTargetStrings.at(i));
     }
 
     listWidget->setGeometry(boxRect);
@@ -65,53 +63,24 @@ void MappingWidget::clickHandler()
     listWidget->setFocus();
 }
 
-QString MappingWidget::arrowsToMapString(const Arrow &a, const Arrow &b)
+void MappingWidget::applyChanges()
 {
-    QString s;
-    s += "(\"";
-    s += QString::number(a.source);
-    s += "->";
-    s += QString::number(a.target);
-    s += "[label=\\\"";
-    s += a.label;
-    s += "\\\"]\",\"";
-    s += QString::number(b.source);
-    s += "->";
-    s += QString::number(b.target);
-    s += "[label=\\\"";
-    s += b.label;
-    s += "\\\"]\")";
+    QVector<QPair<Arrow, Arrow> > *vp;
 
-    return s;
-}
-
-QString MappingWidget::toString()
-{
-    QVector<QPair<Arrow, Arrow> > v;
-    toVector(v);
-
-    QString s;
-
-    s = "[";
-
-    int count = v.count();
-    for (int i = 0; i < count; i++)
+    switch (type)
     {
-        if (i)
-        {
-            s += ",";
-        }
-        s += arrowsToMapString(v.at(i).first, v.at(i).second);
+    case MAPPING_TYPE_AFFORDANCE:
+        vp = &data->mapAffordanceToAbstractEdges;
+        break;
+    case MAPPING_TYPE_ACTION:
+        vp = &data->mapActionToAbstractEdges;
+        break;
+    default:
+        return;
     }
 
-    s += "]";
+    vp->clear();
 
-    return s;
-}
-
-void MappingWidget::toVector(QVector<QPair<Arrow, Arrow> > &v)
-{
-    //tbd: fill v using contents of widget
     int count = treeWidget->topLevelItemCount();
     QString s, t;
     for (int i = 0; i < count; i++)
@@ -121,19 +90,68 @@ void MappingWidget::toVector(QVector<QPair<Arrow, Arrow> > &v)
         s = item->text(0);
         t = item->text(1);
 
-        if (arrowMap.contains(s) && arrowMap.contains(t))
+        if (t == this->noTargetString)
+            continue;
+
+        int idA, idB;
+
+        QRegExp rx("(\\d+)$");
+
+        int pos = -1;
+        if ((pos = rx.indexIn(s)) != -1)
         {
-            v.append(qMakePair(arrowMap[s], arrowMap[t]));
+            QString no = rx.cap(1);
+            idA = no.toInt();
         }
+        else
+            continue;
+
+        if ((pos = rx.indexIn(t)) != -1)
+        {
+            QString no = rx.cap(1);
+            idB = no.toInt();
+        }
+        else
+            continue;
+
+        Arrow a, b;
+        if (arrowMap.contains(idA) && arrowMap.contains(idB))
+        {
+            a = arrowMap[idA];
+            b = arrowMap[idB];
+        }
+        else
+        {
+            continue;
+        }
+
+        vp->push_back(qMakePair(a, b));
     }
 }
 
-void MappingWidget::refresh(QVector<QPair<Arrow, Arrow> > &v)
+void MappingWidget::refresh()
 {
-    allTargetItems.clear();
-    allTargetItems.append(noTargetString);
+    arrowMap.clear();
+    allTargetStrings.clear();
     treeWidget->clear();
+
+    QVector<QPair<Arrow, Arrow> > v;
+    switch (type)
+    {
+    case MAPPING_TYPE_AFFORDANCE:
+        v = data->mapAffordanceToAbstractEdges;
+        break;
+    case MAPPING_TYPE_ACTION:
+        v = data->mapActionToAbstractEdges;
+        break;
+    default:
+        break;
+    }
+
+    allTargetStrings.append(noTargetString);
+
     QVectorIterator<QPair<Arrow, Arrow> > i(v);
+
     while (i.hasNext())
     {
         QPair<Arrow, Arrow> p = i.next();
@@ -143,28 +161,26 @@ void MappingWidget::refresh(QVector<QPair<Arrow, Arrow> > &v)
         b = p.second;
 
         QString s, t;
-        s = a.toString();
-        t = b.toString();
-        s = s.replace("\\n", "");
-        t = t.replace("\\n", "");
-        s = s.replace("\\r", "");
-        t = t.replace("\\r", "");
+        s = a.toString() + " #" + QString::number(a.id);
+        t = b.toString() + " #" + QString::number(b.id);
+        s = s.replace("\n", "");
+        t = t.replace("\n", "");
+        s = s.replace("\r", "");
+        t = t.replace("\r", "");
 
         QStringList list;
         list.append(s);
         list.append(t);
 
-        allTargetItems.append(t);
+        allTargetStrings.append(t);
 
-        arrowMap.insert(s, a);
-        arrowMap.insert(t, b);
+        arrowMap.insert(a.id, a);
+        arrowMap.insert(b.id, b);
 
         QTreeWidgetItem *item = new QTreeWidgetItem(list);
 
         treeWidget->insertTopLevelItem(0, item);
     }
-
-    allTargetItems.append(cancelString);
 }
 
 void MappingWidget::popupSelectionHandler(QListWidgetItem *item)

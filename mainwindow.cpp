@@ -86,90 +86,104 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     toolBar->addAction(browser->pageAction(QWebPage::Stop));
     toolBar->addWidget(locationEdit);
 
-    toolBar->addAction("Model", this, SLOT(model()));
-    toolBar->addAction("Draw", this, SLOT(draw()));
-    toolBar->addSeparator();
-    toolBar->addAction("Stats", this, SLOT(stats()));
-    toolBar->addAction("State", this, SLOT(state()));
-    toolBar->addSeparator();
-    toolBar->addAction("Stop", this, SLOT(stop()));
-    toolBar->addAction("Clear", this, SLOT(clearLogs()));
-
+    QKeySequence ctrlo("Ctrl+O");
+    QKeySequence ctrls("Ctrl+S");
+    QKeySequence ctrlf("Ctrl+F");
+    QKeySequence ctrlb("Ctrl+B");
+    QKeySequence altf4("Alt+F4");
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
-    fileMenu->addAction("Open...", this, SLOT(open()));
-    fileMenu->addAction("Save As...", this, SLOT(save()));
-    fileMenu->addAction("Go to Files", this, SLOT(goToFiles()));
-    fileMenu->addAction("Edit Blacklist...", this, SLOT(openBlacklistDialog()));
+    fileMenu->addAction("Open...", this, SLOT(open()), ctrlo);
+    fileMenu->addAction("Save As...", this, SLOT(save()), ctrls);
+    fileMenu->addAction("Go to Files", this, SLOT(goToFiles()), ctrlf);
+    fileMenu->addAction("Edit Blacklist...", this, SLOT(openBlacklistDialog()), ctrlb);
     fileMenu->addSeparator();
-    fileMenu->addAction("Quit", this, SLOT(close()));
+    fileMenu->addAction("Quit", this, SLOT(close()), altf4);
 
     //tbd
 
-    QMenu *bookmarksMenu = menuBar()->addMenu(tr("&Bookmarks"));
+    QKeySequence alt1("Alt+1");
+    QKeySequence alt2("Alt+2");
+    QKeySequence alt3("Alt+3");
+    QKeySequence alt4("Alt+4");
+    QKeySequence alt5("Alt+5");
+    QKeySequence alt6("Alt+6");
+    QKeySequence alt7("Alt+7");
+    QKeySequence alt8("Alt+8");
+    QKeySequence alt9("Alt+9");
+    QKeySequence alt0("Alt+0");
+    QKeySequence altminus("Alt+-");
+    QKeySequence ctrlt("Ctrl+T");
 
-    bookmarksMenu->addAction("20 Things", this, SLOT(bookmarkTwenty()));
-    bookmarksMenu->addAction("Alertbox", this, SLOT(bookmarkAlertbox()));
-    bookmarksMenu->addAction("Better Interactive", this, SLOT(bookmarkBetterInteractive()));
-    bookmarksMenu->addAction("Big Cartel", this, SLOT(bookmarkBigCartel()));
-    bookmarksMenu->addAction("Fourmilab", this, SLOT(bookmarkFourmilab()));
-    bookmarksMenu->addAction("Free Software Foundation", this, SLOT(bookmarkFree()));
-    bookmarksMenu->addAction("grep", this, SLOT(bookmarkGrep()));
-    bookmarksMenu->addAction("Google Books", this, SLOT(bookmarkBooks()));
-    bookmarksMenu->addAction("Ibis Reader", this, SLOT(bookmarkIbis()));
-    bookmarksMenu->addAction("Unspace", this, SLOT(bookmarkUnspace()));
-    bookmarksMenu->addAction("vi", this, SLOT(bookmarkVi()));
+    QMenu *bookmarksMenu = menuBar()->addMenu(tr("&Bookmarks"));
+    bookmarksMenu->addAction("20 Things", this, SLOT(bookmarkTwenty()), alt1);
+    bookmarksMenu->addAction("Alertbox", this, SLOT(bookmarkAlertbox()), alt2);
+    bookmarksMenu->addAction("Better Interactive\tAlt+3", this, SLOT(bookmarkBetterInteractive()), alt3);
+    bookmarksMenu->addAction("Big Cartel\tAlt+4", this, SLOT(bookmarkBigCartel()), alt4);
+    bookmarksMenu->addAction("Fourmilab", this, SLOT(bookmarkFourmilab()), alt5);
+    bookmarksMenu->addAction("Free Software Foundation", this, SLOT(bookmarkFree()), alt6);
+    bookmarksMenu->addAction("grep", this, SLOT(bookmarkGrep()), alt7);
+    bookmarksMenu->addAction("Google Books", this, SLOT(bookmarkBooks()), alt8);
+    bookmarksMenu->addAction("Ibis Reader", this, SLOT(bookmarkIbis()), alt9);
+    bookmarksMenu->addAction("Unspace", this, SLOT(bookmarkUnspace()), alt0);
+    bookmarksMenu->addAction("vi", this, SLOT(bookmarkVi()), altminus);
 
     bookmarksMenu->addSeparator();
 
-    bookmarksMenu->addAction("Test", this, SLOT(bookmarkTest()));
+    bookmarksMenu->addAction("Test", this, SLOT(bookmarkTest()), ctrlt);
 
+    QKeySequence f1("F1");
+    QKeySequence f2("F2");
+    QKeySequence f3("F3");
+    QKeySequence f4("F4");
+    QKeySequence f5("F5");
+    QKeySequence f6("F6");
     QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
-    toolsMenu->addAction("Model", this, SLOT(model()));
-    toolsMenu->addAction("Draw", this, SLOT(draw()));
+    toolsMenu->addAction("Model", this, SLOT(model()), f1);
+    toolsMenu->addAction("Apply Changes", this, SLOT(apply()), f2);
     toolsMenu->addSeparator();
-    toolsMenu->addAction("Stats", this, SLOT(stats()));
-    toolsMenu->addAction("State", this, SLOT(state()));
+    toolsMenu->addAction("Stats", this, SLOT(stats()), f3);
+    toolsMenu->addAction("State", this, SLOT(state()), f4);
     toolsMenu->addSeparator();
-    toolsMenu->addAction("Stop", this, SLOT(stop()));
-    toolsMenu->addAction("Clear", this, SLOT(clearLogs()));
+    toolsMenu->addAction("Stop", this, SLOT(stop()), f5);
+    toolsMenu->addAction("Clear", this, SLOT(clearLogs()), f6);
 
-    filterWidget = new FilterWidget(this, "Filter");
+    filterWidget = new FilterWidget(this, "Filter", &data);
     filterWidget->setAllowedAreas(Qt::RightDockWidgetArea);
 
     profileWidget = new ProfileWidget(this);
     profileWidget->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    logWidget = new LogWidget(this);
+    logWidget = new LogWidget(this, "Log", &data);
     logWidget->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetAffordances = new LogWidget(this, "Aff");
+    dotWidgetAffordances = new LogWidget(this, "Aff", &data);
     dotWidgetAffordances->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetActions = new LogWidget(this, "Act");
+    dotWidgetActions = new LogWidget(this, "Act", &data);
     dotWidgetActions->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetAbstract = new LogWidget(this, "Abs");
+    dotWidgetAbstract = new LogWidget(this, "Abs", &data);
     dotWidgetAbstract->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    dotWidgetPullback = new LogWidget(this, "Pullback");
+    dotWidgetPullback = new LogWidget(this, "Pullback", &data);
     dotWidgetPullback->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    mappingWidgetAffordance = new MappingWidget(this, "Aff -> Abs");
+    mappingWidgetAffordance = new MappingWidget(this, "Aff -> Abs", &data, MAPPING_TYPE_AFFORDANCE);
     mappingWidgetAffordance->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    mappingWidgetAction = new MappingWidget(this, "Act -> Abs");
+    mappingWidgetAction = new MappingWidget(this, "Act -> Abs", &data, MAPPING_TYPE_ACTION);
     mappingWidgetAction->setAllowedAreas(Qt::RightDockWidgetArea);
 
-    graphWidgetAffordances = new GraphWidget(this, "Aff graph");
+    graphWidgetAffordances = new GraphWidget(this, "Aff graph", &data, GRAPH_TYPE_AFFORDANCE);
     graphWidgetAffordances->setAllowedAreas(Qt::BottomDockWidgetArea);
 
-    graphWidgetActions = new GraphWidget(this, "Act graph");
+    graphWidgetActions = new GraphWidget(this, "Act graph", &data, GRAPH_TYPE_ACTION);
     graphWidgetActions->setAllowedAreas(Qt::BottomDockWidgetArea);
 
-    graphWidgetAbstract = new GraphWidget(this, "Abs graph");
+    graphWidgetAbstract = new GraphWidget(this, "Abs graph", &data, GRAPH_TYPE_ABSTRACT);
     graphWidgetAbstract->setAllowedAreas(Qt::BottomDockWidgetArea);
 
-    graphWidgetPullback = new GraphWidget(this, "Pullback graph");
+    graphWidgetPullback = new GraphWidget(this, "Pullback graph", &data, GRAPH_TYPE_PULLBACK);
     graphWidgetPullback->setAllowedAreas(Qt::BottomDockWidgetArea);
 
     addDockWidget(Qt::RightDockWidgetArea, filterWidget);
@@ -328,8 +342,6 @@ void MainWindow::clearLogs(bool clearInputDotWidgets)
         dotWidgetAffordances->clear();
         dotWidgetActions->clear();
         dotWidgetAbstract->clear();
-        //dotWidgetMappingAction->clear();
-        //dotWidgetMappingAffordance->clear();
     }
     filterWidget->clear();
     dotWidgetPullback->clear();
@@ -353,9 +365,8 @@ void MainWindow::stop()
 void MainWindow::model()
 {
     QString url = this->locationEdit->text();
-    bool isWebsiteModel = !url.isEmpty();
 
-    clearLogs(isWebsiteModel);
+    clearLogs(true);
     data.clear();
     stopFlag = false;
     data.originalUrl = data.lastLocalUrl = url;
@@ -364,250 +375,53 @@ void MainWindow::model()
     logWidget->raise();
     logWidget->push("=== model ===\n");
 
-    QString label = "init";
+    Modeler modeler(browser, logWidget, &blacklist, &stopFlag);
+    modeler.run(&data, url);
 
-    if (isWebsiteModel)
-    {
-        Modeler modeler(browser, logWidget, &blacklist, &stopFlag);
-        modeler.run(&data, url);
+    dotWidgetAffordances->setText(MyString::dataToDotString(&data, DOT_TYPE_AFFORDANCE));
+    dotWidgetActions->setText(MyString::dataToDotString(&data, DOT_TYPE_ACTION));
+    dotWidgetAbstract->setText(MyString::dataToDotString(&data, DOT_TYPE_ABSTRACT));
 
-        filterWidget->refreshAffordances(data.affordanceEdges);
+    filterWidget->refreshAffordances(data.affordanceEdges);
+    visualizeAffordances();
 
-        //refreshMapping(data.mapAffordanceToAbstractNodes, data.mapAffordanceToAbstractEdges, dotWidgetMappingAffordance);
-        //refreshMapping(data.mapActionToAbstractNodes, data.mapActionToAbstractEdges, dotWidgetMappingAction);
+    filterWidget->refreshActions(data.actionEdges);
+    visualizeActions();
 
-        visualizeAffordances(""); //no filter
-
-        filterWidget->refreshActions(data.actionEdges);
-        visualizeActions(""); //no filter
-
-        mappingWidgetAffordance->refresh(data.mapAffordanceToAbstractEdges);
-        mappingWidgetAction->refresh(data.mapActionToAbstractEdges);
-    }
-    else
-    {
-        graphWidgetAffordances->refresh(dotWidgetAffordances->text());
-        graphWidgetActions->refresh(dotWidgetActions->text());
-        graphWidgetAbstract->refresh(dotWidgetAbstract->text());
-    }
+    mappingWidgetAffordance->refresh();
+    mappingWidgetAction->refresh();
 
     refreshPullback();
     graphWidgetAffordances->setFocus();
 }
 
-void MainWindow::visualizeAffordances(const QString &filter)
+void MainWindow::apply()
 {
-    //parse filter string
-    QStringList stateNos = filter.split(",");
-    QSet<int> filteredSet;
-    int filteredSetSize = stateNos.count();
+    //tbd: apply changes for dotWidgets?
 
-    //build set of filtered states
-    for (int index = 0; index < filteredSetSize; index++)
-    {
-        int value = stateNos.at(index).toInt();
-        if (!value)
-            continue;
-        filteredSet.insert(value);
-    }
+    mappingWidgetAffordance->applyChanges();
+    mappingWidgetAction->applyChanges();
 
-    //create graphviz dot file
-    dotWidgetAffordances->clear();
-
-    dotWidgetAffordances->push("digraph d {\n");
-    dotWidgetAffordances->push("graph [ bgcolor=\"white\", resolution=\"128\", fontname=\"Helvetica\", fontcolor=\"black\", fontsize=\"10\" ];");
-    dotWidgetAffordances->push("node [ fontname=\"Helvetica\", penwidth=\"0.25\", fontcolor=\"gray32\", fontsize=\"8\"];");
-    dotWidgetAffordances->push("edge [ color=\"gray32\", arrowsize=\"0.75\", penwidth=\"0.25\", fontname=\"Helvetica\", fontcolor=\"dodgerblue4\", fontsize=\"8\", arrowhead=\"vee\" ];");
-
-    //states
-    std::map<int, QString> states;
-
-    int size = data.affordanceEdges.count();
-    for (int i = 1; i < size; i++) //omit initial state 0
-    {
-        int sourceId, targetId;
-        sourceId = data.affordanceEdges.at(i).source;
-        targetId = data.affordanceEdges.at(i).target;
-        QString source, target;
-        source = MyString::makeState(sourceId, data.affordanceStateTitles[sourceId]);
-        target = MyString::makeState(targetId, data.affordanceStateTitles[targetId]);
-        states.insert(std::make_pair(sourceId, source));
-        states.insert(std::make_pair(targetId, target));
-    }
-
-    std::map<int, QString>::iterator it;
-    for (it = states.begin(); it != states.end(); it++)
-    {
-        bool active = true;
-        if (!filter.isEmpty() && !filteredSet.contains(it->first))
-        {
-            active = false;
-        }
-
-        QString state;
-
-        if (!active)
-        {
-            state += "//";
-        }
-        state += QString::number(it->first);
-        state += " [label=\"";
-        state += it->second;
-        state += "\"]\n";
-        dotWidgetAffordances->push(state);
-    }
-
-    //arrows
-    size = data.affordanceEdges.count();
-    QString arrowLabel;
-    int source, target;
-
-    for (int i = 1; i < size; i++) //omit initial state 0
-    {
-        Arrow a = data.affordanceEdges.at(i);
-
-        source = a.source;
-        target = a.target;
-
-        bool active = true;
-        if (!filter.isEmpty() &&
-            ((!filteredSet.contains(source) || !filteredSet.contains(target))))
-        {
-            active = false;
-        }
-
-        QString arrow;
-
-        if (!active)
-        {
-            arrow += "//";
-        }
-
-        arrow += a.toString();
-
-        dotWidgetAffordances->push(arrow);
-    }
-
-    //end dot structure
-    dotWidgetAffordances->push("}\n");
-
-    graphWidgetAffordances->refresh(dotWidgetAffordances->text());
+    graphWidgetAffordances->refresh();
+    graphWidgetActions->refresh();
+    graphWidgetAbstract->refresh();
+    refreshPullback();
+    graphWidgetAffordances->setFocus();
 }
 
-//tbd: base on affordance graph
-void MainWindow::visualizeActions(const QString &filter)
+void MainWindow::visualizeAffordances()
 {
-    //parse filter string
-    QStringList stateNos = filter.split(",");
-    QSet<int> filteredSet;
-    int filteredSetSize = stateNos.count();
+    graphWidgetAffordances->refresh();
+}
 
-    //build set of filtered states
-    for (int index = 0; index < filteredSetSize; index++)
-    {
-        int value = stateNos.at(index).toInt();
-        if (!value)
-            continue;
-        filteredSet.insert(value);
-    }
+void MainWindow::visualizeActions()
+{
+    graphWidgetActions->refresh();
+}
 
-    //create graphviz dot file
-    dotWidgetActions->clear();
-
-    dotWidgetActions->push("digraph d {\n");
-    dotWidgetActions->push("graph [ bgcolor=\"white\", resolution=\"128\", fontname=\"Helvetica\", fontcolor=\"black\", fontsize=\"10\" ];");
-    dotWidgetActions->push("node [ fontname=\"Helvetica\", penwidth=\"0.25\", fontcolor=\"gray32\", fontsize=\"8\"];");
-    dotWidgetActions->push("edge [ color=\"gray32\", arrowsize=\"0.75\", penwidth=\"0.25\", fontname=\"Helvetica\", fontcolor=\"dodgerblue4\", fontsize=\"8\", arrowhead=\"vee\" ];");
-
-    //states
-    std::map<int, QString> states;
-
-    std::vector<QString> edges;
-
-    QVectorIterator<Arrow> i(data.actionEdges);
-    Arrow a;
-    if (i.hasNext())
-    {
-        a = i.next(); //ignore first
-    }
-
-    while (i.hasNext())
-    {
-        //populate states
-        a = i.next();
-
-        bool active = true;
-        if (!filter.isEmpty() && (!filteredSet.contains(a.source) || !filteredSet.contains(a.target)))
-        {
-            active = false;
-        }
-
-        QString source, target;
-        source = MyString::makeState(a.source, data.actionStateTitles[a.source]);
-        target = MyString::makeState(a.target, data.actionStateTitles[a.target]);
-        states.insert(std::make_pair(a.source, source));
-        states.insert(std::make_pair(a.target, target));
-
-        //populate edges
-        QString edge, edgeLabel;
-
-        if (!active)
-        {
-            edge += "//";
-        }
-        edge += QString::number(a.source);
-        edge += " -> ";
-        edge += QString::number(a.target);
-        edge += " [label=\"";
-
-        edgeLabel = a.label;
-        edgeLabel = edgeLabel.replace("\n", "");
-        edgeLabel = edgeLabel.replace("\r", "");
-        edgeLabel = edgeLabel.replace("\t", " ");
-        edge += edgeLabel;
-        edge += "\"]\n";
-        edges.push_back(edge);
-    }
-
-    //write out states
-    std::map<int, QString>::iterator it;
-    for (it = states.begin(); it != states.end(); it++)
-    {
-        bool active = true;
-        if (!filter.isEmpty() && !filteredSet.contains(it->first))
-        {
-            active = false;
-        }
-
-        QString state;
-
-        if (!active)
-        {
-            state += "//";
-        }
-        state += QString::number(it->first);
-        state += " [label=\"";
-        state += it->second;
-        state += "\"]\n";
-        dotWidgetActions->push(state);
-    }
-
-    //write out edges
-    std::vector<QString>::iterator itEdge;
-    for (itEdge = edges.begin(); itEdge != edges.end(); itEdge++)
-    {
-        dotWidgetActions->push(*itEdge);
-    }
-
-    //end dot structure
-    dotWidgetActions->push("}\n");
-
-    dotWidgetAbstract->push(dotWidgetActions->text());
-
-    graphWidgetActions->refresh(dotWidgetActions->text());
-    graphWidgetAbstract->refresh(dotWidgetAbstract->text());
-
-    //placeholder: abstract same as actions same as
+void MainWindow::visualizeAbstract()
+{
+    graphWidgetAbstract->refresh();
 }
 
 void MainWindow::refreshMapping(
@@ -693,14 +507,6 @@ void MainWindow::updateBlacklist()
     QVariant variant(blacklistString);
     settings->setValue("blacklistString", variant);
     settings->sync();
-}
-
-void MainWindow::draw()
-{
-    graphWidgetAffordances->refresh(dotWidgetAffordances->text());
-    graphWidgetActions->refresh(dotWidgetActions->text());
-    graphWidgetAbstract->refresh(dotWidgetAbstract->text());
-    refreshPullback();
 }
 
 void MainWindow::open()
@@ -825,12 +631,10 @@ void MainWindow::setMachineState(const QString &s)
     dotWidgetAffordances->setText(affordances);
     dotWidgetActions->setText(actions);
     dotWidgetAbstract->setText(abstract);
-    //dotWidgetMappingAffordance->setText(mappingAffordance);
-    //dotWidgetMappingAction->setText(mappingAction);
     dotWidgetPullback->setText(pullback);
 
     //update graphical views
-    draw();
+    apply();
 
     //update filter widget
     this->filterWidget->refreshAffordances(affordances);
@@ -948,10 +752,12 @@ void MainWindow::refreshPullback()
     buffer += arrowVectorToPullback(actionArrows);
     buffer += stateVectorToPullback(abstractStates);
     buffer += arrowVectorToPullback(abstractArrows);
-    buffer += mappingWidgetAffordance->toString();
-    buffer += "\n";
-    buffer += mappingWidgetAction->toString();
-    buffer += "\n";
+
+    //tbd using MyString
+    //buffer += mappingWidgetAffordance->toString();
+    //buffer += "\n";
+    //buffer += mappingWidgetAction->toString();
+    //buffer += "\n";
 
     //fetch dot file from Haskell routine
     QString tempPath = QDir::tempPath();
@@ -1016,5 +822,5 @@ void MainWindow::refreshPullback()
 
     //refresh controls
     dotWidgetPullback->setText(dot);
-    graphWidgetPullback->refresh(dot);
+    graphWidgetPullback->refresh();//(dot);
 }

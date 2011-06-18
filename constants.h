@@ -42,4 +42,22 @@ enum arrowFlags {
     ARROW_FLAG_ARIA = 8
 };
 
+enum mappingTypes {
+    MAPPING_TYPE_AFFORDANCE = 0,
+    MAPPING_TYPE_ACTION
+};
+
+enum graphTypes {
+    GRAPH_TYPE_AFFORDANCE = 0,
+    GRAPH_TYPE_ACTION,
+    GRAPH_TYPE_ABSTRACT,
+    GRAPH_TYPE_PULLBACK
+};
+
+enum dotTypes {
+    DOT_TYPE_AFFORDANCE = 0,
+    DOT_TYPE_ACTION,
+    DOT_TYPE_ABSTRACT
+};
+
 #endif // CONSTANTS_H

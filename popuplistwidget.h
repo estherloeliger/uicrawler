@@ -10,7 +10,7 @@ class PopupListWidget : public QListWidget
     Q_OBJECT
 public:
     explicit PopupListWidget(QWidget *parent = 0);
-    //void keyPressEvent(QKeyEvent *e);
+    void keyPressEvent(QKeyEvent *e);
 
 signals:
 

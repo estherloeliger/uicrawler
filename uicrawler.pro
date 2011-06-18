@@ -26,7 +26,8 @@ SOURCES += main.cpp\
     browser.cpp \
     arrow.cpp \
     mappingwidget.cpp \
-    popuplistwidget.cpp
+    popuplistwidget.cpp \
+    data.cpp
 
 HEADERS  += mainwindow.h \
     logwidget.h \

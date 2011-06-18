@@ -1,4 +1,5 @@
 #include "filterwidget.h"
+#include "data.h"
 #include <QGridLayout>
 #include <QPushButton>
 #include <QStringList>
@@ -10,8 +11,8 @@
 #include "mainwindow.h"
 #include "constants.h"
 
-FilterWidget::FilterWidget(QWidget *parent, const QString &title) :
-    QDockWidget(title, parent)
+FilterWidget::FilterWidget(QWidget *parent, const QString &title, Data *dataP) :
+    QDockWidget(title, parent), data(dataP)
 {
     parentWindow = (MainWindow *)parent;
 
@@ -112,8 +113,10 @@ void FilterWidget::apply()
     affordanceFilter = filterString(affordancesTree);
     actionFilter = filterString(actionsTree);
 
-    parentWindow->visualizeAffordances(affordanceFilter);
-    //parentWindow->visualizeActions(actionFilter);
+    data->affordanceFilter = affordanceFilter;
+    data->actionFilter = actionFilter;
+    parentWindow->visualizeAffordances();//affordanceFilter);
+    //parentWindow->visualizeActions();//actionFilter);
 }
 
 QString FilterWidget::filterString(QTreeWidget *tree)
@@ -192,8 +195,6 @@ void FilterWidget::dotToStates(const QString &s, QVector<State> &v)
     int count = list.count();
 
     QString line;
-    //QRegExp match("(\\d+) \\[label=\"([^\"]+)");
-    //QRegExp nonMatch("(\\d+) -> (\\d+) \\[label=\"([^\"]+)");
     QRegExp match("(\\w+) \\[label=\"([^\"]+)");
     QRegExp nonMatch("(\\w+) -> (\\w+) \\[label=\"([^\"]+)");
 

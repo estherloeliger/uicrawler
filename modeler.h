@@ -20,7 +20,6 @@ public:
             bool *stopFlag);
     bool run(Data *data, const QString &url);
 private:
-    QString arrowsToMapString(const Arrow &a, const Arrow &b);
     bool handleAction(Data *data, int index, int stateId, int arrowType, const QString &origin);
     bool handleHyperlink(Data *data, int index, const QString &url, int stateId, int arrowType, const QString &origin);
     QString linkLabel(const QString &current, const QString &href);

@@ -8,13 +8,14 @@
 #include "state.h"
 class QTreeWidget;
 class MainWindow;
+class Data;
 
 class FilterWidget : public QDockWidget
 {
     Q_OBJECT
 
 public:
-    explicit FilterWidget(QWidget *parent = 0, const QString &title = "Filter");
+    explicit FilterWidget(QWidget *parent, const QString &title, Data *data);
     ~FilterWidget();
     void refreshAffordances(const QString &s);
     void refreshAffordances(QVector<Arrow> &v);
@@ -31,6 +32,7 @@ protected slots:
     void apply();
     QString filterString(QTreeWidget *tree);
 private:
+    Data *data;
     QTreeWidget *affordancesTree, *actionsTree;
     QVector<Arrow> allAffordances, allActions;
     MainWindow *parentWindow;

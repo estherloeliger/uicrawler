@@ -6,7 +6,7 @@ PopupListWidget::PopupListWidget(QWidget *parent) :
 {
 }
 
-/*
+
 void PopupListWidget::keyPressEvent(QKeyEvent *e)
 {
     if (e->key() == Qt::Key_Escape)
@@ -14,9 +14,9 @@ void PopupListWidget::keyPressEvent(QKeyEvent *e)
         hide();
         return;
     }
-    else if (e->key() == Qt::Key_Enter)
+    /*else if (e->key() == Qt::Key_Enter)
     {
 
-    }
+    }*/
+    QListWidget::keyPressEvent(e);
 }
-*/

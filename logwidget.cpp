@@ -1,7 +1,8 @@
 #include "logwidget.h"
+#include "data.h"
 
-LogWidget::LogWidget(QWidget *parent, const QString &title) :
-    QDockWidget(title, parent)
+LogWidget::LogWidget(QWidget *parent, const QString &title, Data *dataP) :
+    QDockWidget(title, parent), data(dataP)
 {
     edit = new QTextEdit(this);
     edit->document()->setMaximumBlockCount(4096);

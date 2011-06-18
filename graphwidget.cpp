@@ -1,4 +1,6 @@
 #include "graphwidget.h"
+#include "data.h"
+#include "mystring.h"
 #include <QLabel>
 #include <QDir>
 #include <QTextStream>
@@ -6,8 +8,8 @@
 #include <QDebug>
 #include <QTextEdit>
 
-GraphWidget::GraphWidget(QWidget *parent, const QString &title) :
-        QDockWidget(title, parent)
+GraphWidget::GraphWidget(QWidget *parent, const QString &title, Data *dataP, int typeP) :
+        QDockWidget(title, parent), data(dataP), type(typeP)
 {
     doc = new QTextEdit(this);
     doc->setReadOnly(true);
@@ -15,8 +17,30 @@ GraphWidget::GraphWidget(QWidget *parent, const QString &title) :
     this->setMinimumHeight(300);
 }
 
-bool GraphWidget::refresh(const QString &graph)
+bool GraphWidget::refresh()
 {
+    QString graph;
+
+    switch (type)
+    {
+    case GRAPH_TYPE_AFFORDANCE:
+        graph = MyString::dataToDotString(data, DOT_TYPE_AFFORDANCE);
+        break;
+    case GRAPH_TYPE_ACTION:
+        graph = MyString::dataToDotString(data, DOT_TYPE_ACTION);
+        break;
+    case GRAPH_TYPE_ABSTRACT:
+        graph = MyString::dataToDotString(data, DOT_TYPE_ABSTRACT);
+        break;
+    case GRAPH_TYPE_PULLBACK:
+        //tbd: call Haskell
+        break;
+    default:
+        return false;
+    }
+
+    //end
+
     QString tempPath = QDir::tempPath();
 
     QString dotPath, pngPath;

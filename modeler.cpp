@@ -70,10 +70,6 @@ void Modeler::recurse(
     code = "document.title";
     QString stateTitle = MyString::truncate(browser->JStoString(code));
 
-    data->affordanceStates.append(State(data->affordanceCounter++, stateTitle, state));
-    data->actionStates.append(State(data->actionCounter++, stateTitle, state));
-    data->abstractStates.append(State(data->abstractCounter++, stateTitle, state));
-
     //keeping track of lastLocalUrl
     if (linkType(data->originalUrl, url) != LINK_EXTERNAL &&
         locationInScope(
@@ -110,7 +106,7 @@ void Modeler::recurse(
             data->abstractEdges.append(actionArrow); //interim: abstract == action graph
             if(actionLabel != "init")
             {
-                data->mapActionToAbstractEdges.append(qMakePair(actionArrow, actionArrow));//arrowsToMapString(actionArrow, actionArrow));//mapping
+                data->mapActionToAbstractEdges.append(qMakePair(actionArrow, actionArrow));//mapping
             }
         }
 
@@ -177,7 +173,7 @@ void Modeler::recurse(
         //mapping
         if(affordanceLabel != "init")
         {
-            data->mapAffordanceToAbstractEdges.append(qMakePair(affordanceArrow, actionArrow));//arrowsToMapString(affordanceArrow, actionArrow));
+            data->mapAffordanceToAbstractEdges.append(qMakePair(affordanceArrow, actionArrow));
         }
         QString affordanceStateTitle, actionStateTitle;
         affordanceStateTitle = (data->affordanceStateTitles.count(stateId)) ?
@@ -186,8 +182,10 @@ void Modeler::recurse(
         actionStateTitle = (data->actionStateTitles.count(stateId)) ?
                            MyString::makeState(stateId, data->actionStateTitles[stateId]) :
                         "Action state " + QString::number(stateId);
-        data->mapAffordanceToAbstractNodes.insert(MyString::stateToMapString(stateId, stateId, affordanceStateTitle, actionStateTitle));
-        data->mapActionToAbstractNodes.insert(MyString::stateToMapString(stateId, stateId, actionStateTitle, actionStateTitle));
+
+        data->mapAffordanceToAbstractNodes.insert(MyString::statesToMapString(State(stateId, affordanceStateTitle, state), State(stateId, actionStateTitle, state)));
+        data->mapActionToAbstractNodes.insert(MyString::statesToMapString(State(stateId, actionStateTitle, state), State(stateId, actionStateTitle, state)));
+
         //end mapping
 
         if (!data->actionEdges.contains(actionArrow))
@@ -319,26 +317,6 @@ bool Modeler::locationInScope(const QString &currentLocation, const QString &ori
     return currentLocation.startsWith(originalPathSegment);
 }
 
-QString Modeler::arrowsToMapString(const Arrow &a, const Arrow &b)
-{
-    QString s;
-    s += "(\"";
-    s += QString::number(a.source);
-    s += "->";
-    s += QString::number(a.target);
-    s += "[label=\\\"";
-    s += a.label;
-    s += "\\\"]\",\"";
-    s += QString::number(b.source);
-    s += "->";
-    s += QString::number(b.target);
-    s += "[label=\\\"";
-    s += b.label;
-    s += "\\\"]\")";
-
-    return s;
-}
-
 bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, const QString &origin)
 {
     if (*stopFlag)
@@ -352,7 +330,7 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, co
     code = "nodeName(";
     code += QString::number(index);
     code += ")";
-    QString nodeName = browser->JStoString(code);//stringFromJs(code);
+    QString nodeName = browser->JStoString(code);
 
     //determine node text
     code = "nodeText(";

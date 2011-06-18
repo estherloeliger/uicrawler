@@ -23,28 +23,24 @@ public:
 
 public slots:
 protected slots:
-
     void adjustLocation();
     void changeLocation();
     void adjustTitle();
     void setProgress(int p);
     void onLoadFinished(bool);
-
     void viewSource();
     void slotSourceDownloaded();
-
     void open();
     void save();
-
     void state();
     void clearLogs(bool b = true);
     void stats();
     void model();
-    void draw();
     void goToFiles();
     void setBusyFlag();
     void openBlacklistDialog();
     void stop();
+    void apply();
 
     //bookmark slots
     void bookmarkIbis() { browser->navigate("http://www.ibisreader.com/library"); }
@@ -60,8 +56,9 @@ protected slots:
     void bookmarkBetterInteractive() { browser->navigate("http://www.betterinteractive.com/"); }
     void bookmarkBigCartel() { browser->navigate("http://bigcartel.com/"); }
 public slots:
-    void visualizeAffordances(const QString &filter = "");
-    void visualizeActions(const QString &filter = "");
+    void visualizeAffordances();
+    void visualizeActions();
+    void visualizeAbstract();
 
 protected:
     void refreshMapping(
@@ -71,6 +68,8 @@ protected:
     void refreshPullback();
 
 private:
+    Data data; //model
+
     QString jQuery, sha1, uicrawler; //JS libraries
     QString blacklistString, lastOpenedFile;
     QSet<QString> blacklist;
@@ -94,7 +93,6 @@ private:
     ProfileWidget *profileWidget;
     MappingWidget *mappingWidgetAffordance, *mappingWidgetAction;
     int progress;
-    Data data;
     QString triggerString(int trigger);
 
     QString machineState();
