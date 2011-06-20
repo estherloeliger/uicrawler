@@ -39,6 +39,7 @@ protected slots:
     void goToFiles();
     void setBusyFlag();
     void openBlacklistDialog();
+    void openWhitelistDialog();
     void stop();
     void apply();
 
@@ -65,15 +66,14 @@ protected:
         const QSet<QString> &mapNodes,
         const QSet<QString> &mapEdges,
         LogWidget *widget);
-    void refreshPullback();
 
 private:
     Data data; //model
 
     QString jQuery, sha1, uicrawler; //JS libraries
-    QString blacklistString, lastOpenedFile;
-    QSet<QString> blacklist;
-    void updateBlacklist();
+    QString blacklistString, whitelistString, lastOpenedFile;
+    QSet<QString> blacklist, whitelist;
+    void updateBlackWhitelists();
     QLineEdit *locationEdit;
     QSettings *settings;
     QAction *rotateAction;
@@ -100,7 +100,5 @@ private:
 
     QHash<int, QString> nodeNames, linkNames;
 
-    QString arrowVectorToPullback(QVector<Arrow> &v);
-    QString stateVectorToPullback(QVector<State> &v);
     bool stopFlag, busyFlag, skipOutOfScopeUrls;
 };

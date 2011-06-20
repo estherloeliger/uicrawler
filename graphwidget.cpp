@@ -33,12 +33,11 @@ bool GraphWidget::refresh()
         graph = MyString::dataToDotString(data, DOT_TYPE_ABSTRACT);
         break;
     case GRAPH_TYPE_PULLBACK:
-        //tbd: call Haskell
+        graph = MyString::dataToPullbackDotString(data);
         break;
     default:
         return false;
     }
-
     //end
 
     QString tempPath = QDir::tempPath();
@@ -99,7 +98,6 @@ bool GraphWidget::refresh()
     html += pngPath;
     html += "\"></img>";
     doc->setHtml(html);
-
     return true;
 }
 

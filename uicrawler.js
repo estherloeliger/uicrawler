@@ -385,6 +385,29 @@ function nodePosition(intValIndex)
     return s;
 }
 
+function scrollToNode(intValIndex)
+{
+    var index = parseInt(intValIndex);
+    var nodes = nodeList();
+    var count = nodes.length;
+
+    if (index >= count)
+    {
+        return -1;
+    }
+
+    var node = nodes[index];
+
+    if (node == null)
+    {
+        return -2;
+    }
+
+    window.scrollTo(node.offsetLeft, node.offsetTop);
+
+    return node.offsetTop;
+}
+
 function triggerAction(intValListener, intValIndex)
 {
     var listener = parseInt(intValListener);
@@ -594,4 +617,25 @@ var Profile =
     Wai:1,
     Events:2,
     Links:3
+}
+
+function firstHeadings()
+{
+    var firsth1content = "";
+    var firsth2content = "";
+
+    var h1Array = document.getElementsByName("h1");
+    if (h1Array.length > 0)
+    {
+        firsth1content = h1Array[0].textContent;
+    }
+
+    var h2Array = document.getElementsByName("h2");
+    if (h2Array.length > 0)
+    {
+        firsth2content = h2Array[0].textContent;
+    }
+
+    var ret = firsth1content + "|" + firsth2content;
+    return ret;
 }

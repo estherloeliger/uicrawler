@@ -17,9 +17,11 @@ public:
             Browser *browser,
             LogWidget *logWidget,
             QSet<QString> *blacklist,
+            QSet<QString> *whitelist,
             bool *stopFlag);
     bool run(Data *data, const QString &url);
 private:
+    bool listCheck(const QString &url);
     bool handleAction(Data *data, int index, int stateId, int arrowType, const QString &origin);
     bool handleHyperlink(Data *data, int index, const QString &url, int stateId, int arrowType, const QString &origin);
     QString linkLabel(const QString &current, const QString &href);
@@ -35,7 +37,7 @@ private:
         int arrowFlags);
     Browser *browser;
     LogWidget *logWidget;
-    QSet<QString> *blacklist;
+    QSet<QString> *blacklist, *whitelist;
     bool *stopFlag;
     MainWindow *mainWindow;
 };

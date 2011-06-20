@@ -186,7 +186,7 @@ void MappingWidget::refresh()
 void MappingWidget::popupSelectionHandler(QListWidgetItem *item)
 {
     QString selection = item->text();
-    if (selection != "Cancel")
+    if (!selection.isEmpty())
     {
         QTreeWidgetItem *treeItem = treeWidget->currentItem();
         treeItem->setText(1, item->text());

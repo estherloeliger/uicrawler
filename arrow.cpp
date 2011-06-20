@@ -7,6 +7,10 @@ QString Arrow::toString()
     QString arrowColor, arrowStyle;
     switch(type)
     {
+    case ARROW_TYPE_ACTION:
+        arrowColor = "dodgerblue4";
+        arrowStyle = "solid";
+        break;
     case ARROW_TYPE_EVENT_CLICK:
         arrowColor = "firebrick2";
         arrowStyle = "solid";

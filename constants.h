@@ -1,7 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#define STATE_MAX 32
+#define STATE_MAX 128
 
 enum triggers {
     TRIGGER_CLICK = 0,

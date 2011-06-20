@@ -18,10 +18,12 @@ public:
     static QString triggerString(int trigger);
     static QString statesToMapString(const State &a, const State &b);
     static QString arrowsToMapString(const Arrow &a, const Arrow &b);
-    static QString stateMappingsToString(const QVector<QPair<State, State> > &v);
-    static QString edgeMappingsToString(const QVector<QPair<Arrow, Arrow> > &v);
     static QString dataToDotString(Data *data, int type);
-
+    static QString dataToPullbackDotString(Data *data);
+    static QString arrowVectorToPullbackString(QVector<Arrow> &v);
+    static QString stateVectorToPullbackString(QVector<State> &v);
+    static QString stateMappingsToPullbackString(const QVector<QPair<State, State> > &v);
+    static QString edgeMappingsToPullbackString(const QVector<QPair<Arrow, Arrow> > &v);
 private:
 };
 

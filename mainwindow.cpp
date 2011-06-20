@@ -23,7 +23,8 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     settings = new QSettings();
 
     blacklistString = settings->value("blacklistString", "").toString();
-    updateBlacklist();
+    whitelistString = settings->value("whitelistString", "").toString();
+    updateBlackWhitelists();
 
     skipOutOfScopeUrls = settings->value("skipOutOfScopeUrls", true).toBool();
 
@@ -38,7 +39,7 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
 
     progress = 0;
 
-    this->setWindowIcon(QIcon(":/uicrawler.ico"));
+    setWindowIcon(QIcon(":/uicrawler.ico"));
 
     QFile file;
     file.setFileName(":/jquery-latest.js");
@@ -90,14 +91,17 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     QKeySequence ctrls("Ctrl+S");
     QKeySequence ctrlf("Ctrl+F");
     QKeySequence ctrlb("Ctrl+B");
+    QKeySequence ctrlw("Ctrl+W");
     QKeySequence altf4("Alt+F4");
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
-    fileMenu->addAction("Open...", this, SLOT(open()), ctrlo);
-    fileMenu->addAction("Save As...", this, SLOT(save()), ctrls);
-    fileMenu->addAction("Go to Files", this, SLOT(goToFiles()), ctrlf);
-    fileMenu->addAction("Edit Blacklist...", this, SLOT(openBlacklistDialog()), ctrlb);
+    fileMenu->addAction("&Open...", this, SLOT(open()), ctrlo);
+    fileMenu->addAction("&Save As...", this, SLOT(save()), ctrls);
+    fileMenu->addAction("Go to &Files", this, SLOT(goToFiles()), ctrlf);
     fileMenu->addSeparator();
-    fileMenu->addAction("Quit", this, SLOT(close()), altf4);
+    fileMenu->addAction("Edit &Blacklist...", this, SLOT(openBlacklistDialog()), ctrlb);
+    fileMenu->addAction("Edit &Whitelist...", this, SLOT(openWhitelistDialog()), ctrlw);
+    fileMenu->addSeparator();
+    fileMenu->addAction("&Quit", this, SLOT(close()), altf4);
 
     //tbd
 
@@ -138,14 +142,14 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     QKeySequence f5("F5");
     QKeySequence f6("F6");
     QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
-    toolsMenu->addAction("Model", this, SLOT(model()), f1);
-    toolsMenu->addAction("Apply Changes", this, SLOT(apply()), f2);
+    toolsMenu->addAction("&Model", this, SLOT(model()), f1);
+    toolsMenu->addAction("&Apply Changes", this, SLOT(apply()), f2);
     toolsMenu->addSeparator();
-    toolsMenu->addAction("Stats", this, SLOT(stats()), f3);
-    toolsMenu->addAction("State", this, SLOT(state()), f4);
+    toolsMenu->addAction("&Stats", this, SLOT(stats()), f3);
+    toolsMenu->addAction("S&tate", this, SLOT(state()), f4);
     toolsMenu->addSeparator();
-    toolsMenu->addAction("Stop", this, SLOT(stop()), f5);
-    toolsMenu->addAction("Clear", this, SLOT(clearLogs()), f6);
+    toolsMenu->addAction("St&op", this, SLOT(stop()), f5);
+    toolsMenu->addAction("&Clear", this, SLOT(clearLogs()), f6);
 
     filterWidget = new FilterWidget(this, "Filter", &data);
     filterWidget->setAllowedAreas(Qt::RightDockWidgetArea);
@@ -201,34 +205,36 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     addDockWidget(Qt::BottomDockWidgetArea, graphWidgetActions);
     addDockWidget(Qt::BottomDockWidgetArea, graphWidgetPullback);
 
-    this->tabifyDockWidget(logWidget, dotWidgetAffordances);
-    this->tabifyDockWidget(logWidget, dotWidgetActions);
-    this->tabifyDockWidget(logWidget, dotWidgetAbstract);
-    this->tabifyDockWidget(logWidget, dotWidgetPullback);
-    this->tabifyDockWidget(logWidget, mappingWidgetAffordance);
-    this->tabifyDockWidget(logWidget, mappingWidgetAction);
-    this->tabifyDockWidget(logWidget, filterWidget);
-    this->tabifyDockWidget(logWidget, profileWidget);
+    tabifyDockWidget(logWidget, dotWidgetAffordances);
+    tabifyDockWidget(logWidget, dotWidgetActions);
+    tabifyDockWidget(logWidget, dotWidgetAbstract);
+    tabifyDockWidget(logWidget, dotWidgetPullback);
+    tabifyDockWidget(logWidget, mappingWidgetAffordance);
+    tabifyDockWidget(logWidget, mappingWidgetAction);
+    tabifyDockWidget(logWidget, filterWidget);
+    tabifyDockWidget(logWidget, profileWidget);
     logWidget->raise();
 
-    this->tabifyDockWidget(graphWidgetAffordances, graphWidgetActions);
-    this->tabifyDockWidget(graphWidgetAffordances, graphWidgetAbstract);
-    this->tabifyDockWidget(graphWidgetAffordances, graphWidgetPullback);
+    tabifyDockWidget(graphWidgetAffordances, graphWidgetActions);
+    tabifyDockWidget(graphWidgetAffordances, graphWidgetAbstract);
+    tabifyDockWidget(graphWidgetAffordances, graphWidgetPullback);
     graphWidgetAffordances->raise();
 
     setCentralWidget(browser);
     setUnifiedTitleAndToolBarOnMac(true);
 
-    this->setMinimumWidth(1024);
-    this->setMinimumHeight(768);
+    setMinimumWidth(1024);
+    setMinimumHeight(768);
     locationEdit->setFocus();
 }
 
 MainWindow::~MainWindow()
 {
     QVariant blacklistStringVariant(blacklistString);
+    QVariant whitelistStringVariant(whitelistString);
     QVariant lastOpenedFileVariant(lastOpenedFile);
     settings->setValue("blacklistString", blacklistStringVariant);
+    settings->setValue("whitelistString", whitelistStringVariant);
     settings->setValue("lastOpenedFile", lastOpenedFileVariant);
     settings->setValue("skipOutOfScopeUrls", skipOutOfScopeUrls);
     delete settings;
@@ -364,7 +370,7 @@ void MainWindow::stop()
 
 void MainWindow::model()
 {
-    QString url = this->locationEdit->text();
+    QString url = locationEdit->text();
 
     clearLogs(true);
     data.clear();
@@ -375,23 +381,26 @@ void MainWindow::model()
     logWidget->raise();
     logWidget->push("=== model ===\n");
 
-    Modeler modeler(browser, logWidget, &blacklist, &stopFlag);
+    Modeler modeler(browser, logWidget, &blacklist, &whitelist, &stopFlag);
     modeler.run(&data, url);
 
     dotWidgetAffordances->setText(MyString::dataToDotString(&data, DOT_TYPE_AFFORDANCE));
     dotWidgetActions->setText(MyString::dataToDotString(&data, DOT_TYPE_ACTION));
     dotWidgetAbstract->setText(MyString::dataToDotString(&data, DOT_TYPE_ABSTRACT));
+    dotWidgetPullback->setText(MyString::dataToPullbackDotString(&data));
 
     filterWidget->refreshAffordances(data.affordanceEdges);
     visualizeAffordances();
-
     filterWidget->refreshActions(data.actionEdges);
     visualizeActions();
+    visualizeAbstract();
 
     mappingWidgetAffordance->refresh();
+
     mappingWidgetAction->refresh();
 
-    refreshPullback();
+    graphWidgetPullback->refresh();
+
     graphWidgetAffordances->setFocus();
 }
 
@@ -405,7 +414,7 @@ void MainWindow::apply()
     graphWidgetAffordances->refresh();
     graphWidgetActions->refresh();
     graphWidgetAbstract->refresh();
-    refreshPullback();
+    graphWidgetPullback->refresh();
     graphWidgetAffordances->setFocus();
 }
 
@@ -488,24 +497,55 @@ void MainWindow::openBlacklistDialog()
         return;
 
     blacklistString = text;
-    updateBlacklist();
+    updateBlackWhitelists();
 }
 
-void MainWindow::updateBlacklist()
+void MainWindow::openWhitelistDialog()
+{
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("Whitelist"),
+        tr("URLs (e.g. http://www.google.com;http://www.yahoo.com)                                                                                     "),
+        QLineEdit::Normal,
+        whitelistString,
+        &ok);
+    if (!ok || text.isEmpty())
+        return;
+
+    whitelistString = text;
+    updateBlackWhitelists();
+}
+
+void MainWindow::updateBlackWhitelists()
 {
     blacklist.clear();
+    whitelist.clear();
 
+    //blacklist
     QStringList list = blacklistString.split(";", QString::SkipEmptyParts);
     int count = list.count();
-    QString url;
+    QString field;
     for (int i = 0; i < count; i++)
     {
-        url = list.at(i);
-        blacklist.insert(url);
+        field = list.at(i);
+        blacklist.insert(field);
     }
 
-    QVariant variant(blacklistString);
-    settings->setValue("blacklistString", variant);
+    QVariant blacklistVariant(blacklistString);
+    settings->setValue("blacklistString", blacklistVariant);
+
+    //whitelist
+    list = whitelistString.split(";", QString::SkipEmptyParts);
+    count = list.count();
+    for (int i = 0; i < count; i++)
+    {
+        field = list.at(i);
+        whitelist.insert(field);
+    }
+
+    QVariant whitelistVariant(whitelistString);
+    settings->setValue("whitelistString", whitelistVariant);
+
+    //sync all
     settings->sync();
 }
 
@@ -637,8 +677,8 @@ void MainWindow::setMachineState(const QString &s)
     apply();
 
     //update filter widget
-    this->filterWidget->refreshAffordances(affordances);
-    this->filterWidget->refreshActions(actions);
+    filterWidget->refreshAffordances(affordances);
+    filterWidget->refreshActions(actions);
 
     //update data structure
     QVector<Arrow> affordanceArrows, actionArrows;
@@ -647,180 +687,4 @@ void MainWindow::setMachineState(const QString &s)
 
     data.affordanceEdges = affordanceArrows;
     data.actionEdges = actionArrows;
-}
-
-QString MainWindow::arrowVectorToPullback(QVector<Arrow> &v)
-{
-    int count = v.count();
-
-    QStringList edges;
-    for (int i = 0; i < count; i++)
-    {
-        QString edge;
-        Arrow a = v.at(i);
-        edge += QString::number(a.source);
-        edge += "->";
-        edge += QString::number(a.target);
-        edge += "[label=\\\"";
-        edge += a.label;
-        edge += "\\\"]";
-
-        edges.append(edge);
-
-        //tbd: populate states
-    }
-
-    QString s;
-    s = "[";
-
-    int edgeCount = edges.count();
-    for (int i = 0; i < edgeCount; i++)
-    {
-        if (i)
-        {
-            s += ",";
-        }
-        s += "\"";
-        s += edges.at(i);
-        s += "\"";
-    }
-
-    s += "]\n";
-
-    return s;
-}
-
-
-QString MainWindow::stateVectorToPullback(QVector<State> &v)
-{
-    int count = v.count();
-
-    QStringList nodes;
-    for (int i = 0; i < count; i++)
-    {
-        QString node;
-        State s = v.at(i);
-        node += QString::number(s.id);
-        node += "[label=\\\"";
-        node += s.title;
-        node += "\\\"]";
-
-        nodes.append(node);
-
-        //tbd: populate states
-    }
-
-    QString s;
-    s = "[";
-
-    int nodeCount = nodes.count();
-    for (int i = 0; i < nodeCount; i++)
-    {
-        if (i)
-        {
-            s += ",";
-        }
-        s += "\"";
-        s += nodes.at(i);
-        s += "\"";
-    }
-
-    s += "]\n";
-
-    return s;
-}
-
-
-void MainWindow::refreshPullback()
-{
-    logWidget->push("=== refreshPullback ===\n");
-    QVector<State> affordanceStates, actionStates, abstractStates;
-    QVector<Arrow> affordanceArrows, actionArrows, abstractArrows;
-
-    filterWidget->dotToStates(this->dotWidgetAffordances->text(), affordanceStates);
-    filterWidget->dotToArrows(this->dotWidgetAffordances->text(), affordanceArrows);
-    filterWidget->dotToStates(this->dotWidgetActions->text(), actionStates);
-    filterWidget->dotToArrows(this->dotWidgetActions->text(), actionArrows);
-    filterWidget->dotToStates(this->dotWidgetAbstract->text(), abstractStates);
-    filterWidget->dotToArrows(this->dotWidgetAbstract->text(), abstractArrows);
-
-    QString buffer;
-
-    buffer += stateVectorToPullback(affordanceStates);
-    buffer += arrowVectorToPullback(affordanceArrows);
-    buffer += stateVectorToPullback(actionStates);
-    buffer += arrowVectorToPullback(actionArrows);
-    buffer += stateVectorToPullback(abstractStates);
-    buffer += arrowVectorToPullback(abstractArrows);
-
-    //tbd using MyString
-    //buffer += mappingWidgetAffordance->toString();
-    //buffer += "\n";
-    //buffer += mappingWidgetAction->toString();
-    //buffer += "\n";
-
-    //fetch dot file from Haskell routine
-    QString tempPath = QDir::tempPath();
-
-    QString serializePath, dotPath;
-
-    for (int i = 0; ; i++)
-    {
-        serializePath = tempPath;
-        serializePath += "/uic";
-        serializePath += QString::number(i);
-        serializePath += + ".txt";
-        if (!QFile::exists(serializePath))
-            break;
-    }
-
-    for (int j = 0; ; j++)
-    {
-        dotPath = tempPath;
-        dotPath += "/uic";
-        dotPath += QString::number(j);
-        dotPath += ".dot";
-        if (!QFile::exists(dotPath))
-            break;
-    }
-
-    QFile serializeFile(serializePath);
-    serializeFile.open(QIODevice::WriteOnly | QIODevice::Text);
-    QTextStream out(&serializeFile);
-    out << buffer;
-    serializeFile.close();
-
-#ifdef Q_OS_LINUX
-    QProcess::execute("cd /tmp");
-#endif
-
-    QString haskellCmd;
-    haskellCmd += QCoreApplication::applicationDirPath();
-    haskellCmd += "/bin/pullbacks_first ";
-    haskellCmd += serializePath;
-    haskellCmd += " ";
-    haskellCmd += dotPath;
-
-    qDebug() << haskellCmd;
-    int ret = QProcess::execute(haskellCmd);
-
-    if (ret)
-    {
-        qDebug() << "Haskell command returned error value";
-        qDebug() << buffer;
-        return;
-    }
-
-    //read dot file
-    QString dot;
-
-    QFile file;
-    file.setFileName(dotPath);
-    file.open(QIODevice::ReadOnly);
-    dot = file.readAll();
-    file.close();
-
-    //refresh controls
-    dotWidgetPullback->setText(dot);
-    graphWidgetPullback->refresh();//(dot);
 }

@@ -109,7 +109,84 @@ QString MyString::arrowsToMapString(const Arrow &a, const Arrow &b)
     return s;
 }
 
-QString MyString::stateMappingsToString(const QVector<QPair<State, State> > &v)
+QString MyString::arrowVectorToPullbackString(QVector<Arrow> &v)
+{
+    int count = v.count();
+
+    QStringList edges;
+    for (int i = 0; i < count; i++)
+    {
+        QString edge;
+        Arrow a = v.at(i);
+        edge += QString::number(a.source);
+        edge += "->";
+        edge += QString::number(a.target);
+        edge += "[label=\\\"";
+        edge += a.label;
+        edge += "\\\"]";
+
+        edges.append(edge);
+
+        //tbd: populate states
+    }
+
+    QString s;
+    s = "[";
+
+    int edgeCount = edges.count();
+    for (int i = 0; i < edgeCount; i++)
+    {
+        if (i)
+        {
+            s += ",";
+        }
+        s += "\"";
+        s += edges.at(i);
+        s += "\"";
+    }
+
+    s += "]\n";
+
+    return s;
+}
+
+QString MyString::stateVectorToPullbackString(QVector<State> &v)
+{
+    int count = v.count();
+
+    QStringList nodes;
+    for (int i = 0; i < count; i++)
+    {
+        QString node;
+        State s = v.at(i);
+        node += QString::number(s.id);
+        node += "[label=\\\"";
+        node += s.title;
+        node += "\\\"]";
+        nodes.append(node);
+    }
+
+    QString s;
+    s = "[";
+
+    int nodeCount = nodes.count();
+    for (int i = 0; i < nodeCount; i++)
+    {
+        if (i)
+        {
+            s += ",";
+        }
+        s += "\"";
+        s += nodes.at(i);
+        s += "\"";
+    }
+
+    s += "]\n";
+
+    return s;
+}
+
+QString MyString::stateMappingsToPullbackString(const QVector<QPair<State, State> > &v)
 {
     QString s;
 
@@ -130,7 +207,7 @@ QString MyString::stateMappingsToString(const QVector<QPair<State, State> > &v)
     return s;
 }
 
-QString MyString::edgeMappingsToString(const QVector<QPair<Arrow, Arrow> > &v)
+QString MyString::edgeMappingsToPullbackString(const QVector<QPair<Arrow, Arrow> > &v)
 {
     QString s;
 
@@ -272,3 +349,91 @@ QString MyString::dataToDotString(Data *data, int type)
 
     return s;
 }
+
+QString MyString::dataToPullbackDotString(Data *data)
+{
+    QString buffer;
+
+    //exp
+    buffer += MyString::stateVectorToPullbackString(data->affordanceStates);
+    buffer += MyString::arrowVectorToPullbackString(data->affordanceEdges);
+    buffer += MyString::stateVectorToPullbackString(data->actionStates);
+    buffer += MyString::arrowVectorToPullbackString(data->actionEdges);
+    buffer += MyString::stateVectorToPullbackString(data->abstractStates);
+    buffer += MyString::arrowVectorToPullbackString(data->abstractEdges);
+
+    buffer += MyString::stateMappingsToPullbackString(data->mapAffordanceToAbstractNodes); //separate collection for states needed?
+    buffer += "\n";
+    buffer += MyString::edgeMappingsToPullbackString(data->mapAffordanceToAbstractEdges);
+    buffer += "\n";
+    buffer += MyString::stateMappingsToPullbackString(data->mapActionToAbstractNodes);
+    buffer += "\n";
+    buffer += MyString::edgeMappingsToPullbackString(data->mapActionToAbstractEdges);
+    buffer += "\n";
+
+    //fetch dot file from Haskell routine
+    QString tempPath = QDir::tempPath();
+
+    QString serializePath, dotPath;
+
+    for (int i = 0; ; i++)
+    {
+        serializePath = tempPath;
+        serializePath += "/uic";
+        serializePath += QString::number(i);
+        serializePath += + ".txt";
+        if (!QFile::exists(serializePath))
+            break;
+    }
+
+    for (int j = 0; ; j++)
+    {
+        dotPath = tempPath;
+        dotPath += "/uic";
+        dotPath += QString::number(j);
+        dotPath += ".dot";
+        if (!QFile::exists(dotPath))
+            break;
+    }
+
+    QFile serializeFile(serializePath);
+    serializeFile.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream out(&serializeFile);
+    out << buffer;
+    serializeFile.close();
+
+    //qDebug() << "Wrote string:\n" << buffer << "to file: " << serializePath;
+
+#ifdef Q_OS_LINUX
+    QProcess::execute("cd /tmp");
+#endif
+
+    QString haskellCmd;
+    haskellCmd += QCoreApplication::applicationDirPath();
+    haskellCmd += "/bin/pullbacks_first ";
+    haskellCmd += serializePath;
+    haskellCmd += " ";
+    haskellCmd += dotPath;
+
+    qDebug() << haskellCmd;
+    int ret = QProcess::execute(haskellCmd);
+
+    if (ret)
+    {
+        qDebug() << "Haskell command returned error value";
+        qDebug() << "Wrote string:\n" << buffer << "to file: " << serializePath;
+        return "";
+    }
+
+    //read dot file
+    QString dot;
+
+    QFile file;
+    file.setFileName(dotPath);
+    file.open(QIODevice::ReadOnly);
+    dot = file.readAll();
+    file.close();
+
+    return dot;
+}
+

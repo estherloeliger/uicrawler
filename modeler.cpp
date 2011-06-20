@@ -8,10 +8,12 @@ Modeler::Modeler(
         Browser *browserP,
         LogWidget *logWidgetP,
         QSet<QString> *blacklistP,
+        QSet<QString> *whitelistP,
         bool *stopFlagP) :
         browser(browserP),
         logWidget(logWidgetP),
         blacklist(blacklistP),
+        whitelist(whitelistP),
         stopFlag(stopFlagP)
 {
 }
@@ -19,6 +21,10 @@ Modeler::Modeler(
 bool Modeler::run(Data *data, const QString &url)
 {
     QString label = "init";
+
+    //determine original title
+    QString code = "document.title";
+    data->originalTitle = MyString::truncate(browser->JStoString(code));
 
     recurse(
         data,
@@ -70,6 +76,30 @@ void Modeler::recurse(
     code = "document.title";
     QString stateTitle = MyString::truncate(browser->JStoString(code));
 
+    if (stateTitle == data->originalTitle)
+    {
+        code = "firstHeadings()";
+        QString ret = browser->JStoString(code);
+        qDebug() << "headings: " << ret;
+        QStringList headings = ret.split("|");
+        if (headings.count() >= 2)
+        {
+            QString h1, h2;
+            h1 = headings.at(0);
+            h2 = headings.at(1);
+            if (h1 != data->originalTitle)
+            {
+                stateTitle = h1;
+                qDebug() << "state title now: " << h1;
+            }
+            else if (h2 != data->originalTitle)
+            {
+                stateTitle = h2;
+                qDebug() << "state title now: " << h2;
+            }
+        }
+    }
+
     //keeping track of lastLocalUrl
     if (linkType(data->originalUrl, url) != LINK_EXTERNAL &&
         locationInScope(
@@ -89,24 +119,23 @@ void Modeler::recurse(
 
         affordanceArrow.setFlags(arrowFlags);
 
-        data->affordanceEdges.append(affordanceArrow);
-
         //tbr: derive from affordance graph instead
         Arrow actionArrow((data->actionCounter) + 1, parentStateId, data->states[state], ARROW_TYPE_ACTION, true, actionLabel);
 
         if (affordanceLabel != "init")
         {
-            data->mapAffordanceToAbstractEdges.append(qMakePair(affordanceArrow, actionArrow));//arrowsToMapString(affordanceArrow, actionArrow));//mapping
+            data->affordanceEdges.push_back(affordanceArrow);
+            data->mapAffordanceToAbstractEdges.push_back(qMakePair(affordanceArrow, actionArrow));
         }
 
         if (!data->actionEdges.contains(actionArrow))
         {
             (data->actionCounter)++; //delayed increment
-            data->actionEdges.append(actionArrow);
-            data->abstractEdges.append(actionArrow); //interim: abstract == action graph
             if(actionLabel != "init")
             {
-                data->mapActionToAbstractEdges.append(qMakePair(actionArrow, actionArrow));//mapping
+                data->actionEdges.push_back(actionArrow);
+                data->abstractEdges.push_back(actionArrow); //interim: abstract == action graph
+                data->mapActionToAbstractEdges.push_back(qMakePair(actionArrow, actionArrow));//mapping
             }
         }
 
@@ -163,16 +192,21 @@ void Modeler::recurse(
         data->actionStateTitles.insert(stateId, stateTitle);
         data->abstractStateTitles.insert(stateId, stateTitle);
 
+
+        data->affordanceStates.push_back(State(stateId, MyString::makeState(stateId, stateTitle), state));
+        data->actionStates.push_back(State(stateId, MyString::makeState(stateId, stateTitle), state));
+        data->abstractStates.push_back(State(stateId, MyString::makeState(stateId, stateTitle), state));
+
         Arrow affordanceArrow(data->affordanceCounter, parentStateId, stateId, arrowType, true, affordanceLabel);
 
         affordanceArrow.setFlags(arrowFlags);
 
-        data->affordanceEdges.append(affordanceArrow);
         Arrow actionArrow((data->actionCounter) + 1, parentStateId, stateId, ARROW_TYPE_ACTION, true, actionLabel);
 
         //mapping
         if(affordanceLabel != "init")
         {
+            data->affordanceEdges.push_back(affordanceArrow);
             data->mapAffordanceToAbstractEdges.append(qMakePair(affordanceArrow, actionArrow));
         }
         QString affordanceStateTitle, actionStateTitle;
@@ -183,20 +217,20 @@ void Modeler::recurse(
                            MyString::makeState(stateId, data->actionStateTitles[stateId]) :
                         "Action state " + QString::number(stateId);
 
-        data->mapAffordanceToAbstractNodes.insert(MyString::statesToMapString(State(stateId, affordanceStateTitle, state), State(stateId, actionStateTitle, state)));
-        data->mapActionToAbstractNodes.insert(MyString::statesToMapString(State(stateId, actionStateTitle, state), State(stateId, actionStateTitle, state)));
+        data->mapAffordanceToAbstractNodes.push_back(qMakePair(State(stateId, affordanceStateTitle, state), State(stateId, actionStateTitle, state)));
+        data->mapActionToAbstractNodes.push_back(qMakePair(State(stateId, actionStateTitle, state), State(stateId, actionStateTitle, state)));
 
         //end mapping
 
         if (!data->actionEdges.contains(actionArrow))
         {
             (data->actionCounter)++; //delayed increment
-            data->actionEdges.append(actionArrow);
-            data->abstractEdges.append(actionArrow);
             data->actionStateTitles.insert(data->actionCounter, stateTitle);
             if(actionLabel != "init")
             {
-                data->mapActionToAbstractEdges.append(qMakePair(actionArrow, actionArrow));//arrowsToMapString(actionArrow, actionArrow));//mapping
+                data->actionEdges.push_back(actionArrow);
+                data->abstractEdges.push_back(actionArrow);
+                data->mapActionToAbstractEdges.push_back(qMakePair(actionArrow, actionArrow));
             }
         }
 
@@ -301,18 +335,67 @@ QString Modeler::linkLabel(const QString &current, const QString &href)
     }
 }
 
+bool Modeler::listCheck(const QString &url)
+{
+    //blacklist
+    QString field;
+    QSetIterator<QString> itBlacklist(*blacklist);
+    while (itBlacklist.hasNext())
+    {
+        field = itBlacklist.next();
+        QRegExp rx(field);
+        if (!rx.isValid())
+        {
+            qDebug() << "blacklist check: " << url << " is not a valid regex";
+            continue;
+        }
+        if (rx.indexIn(url) != -1) // exit if matched
+        {
+            qDebug() << "blacklist check: " << url << " blacklisted";
+            return false;
+        }
+    }
+
+    //whitelist
+    QSetIterator<QString> itWhitelist(*whitelist);
+    if (!whitelist->isEmpty())
+    {
+        bool pass = false;
+        while (itWhitelist.hasNext())
+        {
+            field = itWhitelist.next();
+            QRegExp rx(field);
+            if (!rx.isValid())
+            {
+                qDebug() << "whitelist check: " << url << " is not a valid regex";
+                continue;
+            }
+
+            if (rx.indexIn(url) != -1) // set pass to true if matched
+            {
+                pass = true;
+                break;
+            }
+        }
+        if (!pass)
+        {
+            qDebug() << url << " not whitelisted";
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool Modeler::locationInScope(const QString &currentLocation, const QString &original)
 {
-    qDebug() << "locationinscope called---current:" << currentLocation << "---original:" << original;
+    if (!listCheck(currentLocation))
+    {
+        return false;
+    }
 
     int lastSlash = original.lastIndexOf("/");
     QString originalPathSegment = original.left(lastSlash);
-
-    if (blacklist->contains(currentLocation))
-    {
-        qDebug() << currentLocation << " on blacklist";
-        return false;
-    }
 
     return currentLocation.startsWith(originalPathSegment);
 }
@@ -348,12 +431,22 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, co
         browser->wait(true, 2);
 
         //tbd: bail out?
+        return false; //exp
     }
 
     qDebug() << "Processing #" << index << " - node " << nodeName << " - label " << nodeText << "\n";
 
     for (int j = TRIGGER_CLICK; j < TRIGGER_INIT; j++)
     {
+        /*
+        //scroll to node
+        code = "scrollToNode(";
+        code += QString::number(index);
+        code += ")";
+        int verticalOffset = browser->JStoInt(code);
+        qDebug() << "Vertical offset for scrolling: " << verticalOffset;
+        */
+
         //position mouse above node
         code = "nodePosition(";
         code += QString::number(index);
@@ -447,7 +540,8 @@ bool Modeler::handleAction(Data *data, int index, int stateId, int arrowType, co
            affordanceLabel += "'";
         }
 
-        actionLabel = (nodeText.isEmpty()) ? "" : MyString::truncate(MyString::flatten(nodeText));
+        //tbd: differentiate affordanceLabel and actionLabel?
+        actionLabel = affordanceLabel;
 
         arrowType = ARROW_TYPE_INIT;
         switch (j)
@@ -536,7 +630,8 @@ bool Modeler::handleHyperlink(Data *data, int index, const QString &url, int sta
     if (
             linkHref.isEmpty() ||
             linkHref == "\"\"" ||
-            blacklist->contains(linkHrefAbsolute) ||
+            //blacklist->contains(linkHrefAbsolute) ||
+            (!listCheck(linkHrefAbsolute)) ||
             linkHref.contains("mailto:") ||
             linkHrefAbsolute.contains("https:")
        )
@@ -556,9 +651,9 @@ bool Modeler::handleHyperlink(Data *data, int index, const QString &url, int sta
         affordanceLabel = MyString::truncate(MyString::flatten(linkLabel(url,linkHref)));
     }
 
-    actionLabel = (linkText.isEmpty()) ? "action" : linkText;
+    //tbd: differentiate actionLabel from affordanceLabel?
+    actionLabel = affordanceLabel;
 
-    //browser->load(linkHrefAbsolute); //was ok in MainWindow, doesn't work here
     browser->navigate(linkHrefAbsolute);
 
     logWidget->push("===set location to " + linkHrefAbsolute + "===\n");

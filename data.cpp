@@ -7,18 +7,26 @@ Data::Data() : counter(0), idCounter(0), affordanceCounter(0), actionCounter(0),
 void Data::clear()
 {
     states.clear();
+
     affordanceStateTitles.clear();
     actionStateTitles.clear();
     abstractStateTitles.clear();
+
+    affordanceStates.clear();
+    actionStates.clear();
+    abstractStates.clear();
+
     affordanceEdges.clear();
     actionEdges.clear();
     abstractEdges.clear();
+
     mapAffordanceToAbstractEdges.clear();
     mapActionToAbstractEdges.clear();
     mapAffordanceToAbstractNodes.clear();
     mapActionToAbstractNodes.clear();
+
     counter = idCounter = affordanceCounter = actionCounter = abstractCounter = 0;
-    originalUrl = lastLocalUrl = affordanceFilter = actionFilter = "";
+    originalUrl = originalTitle = lastLocalUrl = affordanceFilter = actionFilter = "";
 }
 
 //stub for machine state

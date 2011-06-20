@@ -152,7 +152,6 @@ void FilterWidget::dotToArrows(const QString &s, QVector<Arrow> &v)
     int count = list.count();
 
     QString line;
-    //QRegExp match("(\\d+) -> (\\d+) \\[label=\"([^\"]+)");
     QRegExp match("(\\w+) -> (\\w+) \\[label=\"([^\"]+)");
     if (!match.isValid())
     {
