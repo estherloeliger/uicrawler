@@ -624,18 +624,39 @@ function firstHeadings()
     var firsth1content = "";
     var firsth2content = "";
 
-    var h1Array = document.getElementsByName("h1");
+    var h1Array = document.getElementsByTagName("h1");
     if (h1Array.length > 0)
     {
-        firsth1content = h1Array[0].textContent;
+        firsth1content = h1Array[0].textContent;//childNodes[0].nodeValue;//textContent;
     }
 
-    var h2Array = document.getElementsByName("h2");
+    var h2Array = document.getElementsByTagName("h2");
     if (h2Array.length > 0)
     {
-        firsth2content = h2Array[0].textContent;
+        firsth2content = h2Array[0].textContent;//childNodes[0].nodeValue;//textContent;
     }
 
     var ret = firsth1content + "|" + firsth2content;
     return ret;
+}
+
+
+function getMetaDescriptionContent()
+{
+    var metaArray = document.getElementsByTagName("meta");
+    var metaArrayLength = metaArray.length;
+
+    for (var i = 0; i < metaArrayLength; i++)
+    {
+        var meta = metaArray[i];
+
+        var name = meta.getAttribute('name');
+
+        //check href present
+        if (name == "description")
+        {
+            return meta.getAttribute('content');
+        }
+    }
+    return "";
 }

@@ -390,15 +390,21 @@ void MainWindow::model()
     dotWidgetPullback->setText(MyString::dataToPullbackDotString(&data));
 
     filterWidget->refreshAffordances(data.affordanceEdges);
+    logWidget->push("=== visualizing affordances ===\n");
     visualizeAffordances();
     filterWidget->refreshActions(data.actionEdges);
+    logWidget->push("=== visualizing actions ===\n");
     visualizeActions();
+    logWidget->push("=== visualizing abstract ===\n");
     visualizeAbstract();
 
+    logWidget->push("=== refreshing mappings affordances -> abstract ===\n");
     mappingWidgetAffordance->refresh();
 
+    logWidget->push("=== refreshing mappings actions -> abstract ===\n");
     mappingWidgetAction->refresh();
 
+    logWidget->push("=== refreshing pullback ===\n");
     graphWidgetPullback->refresh();
 
     graphWidgetAffordances->setFocus();

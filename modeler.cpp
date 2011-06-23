@@ -73,33 +73,6 @@ void Modeler::recurse(
     code = "state()";
     QString state = browser->JStoString(code);
 
-    code = "document.title";
-    QString stateTitle = MyString::truncate(browser->JStoString(code));
-
-    if (stateTitle == data->originalTitle)
-    {
-        code = "firstHeadings()";
-        QString ret = browser->JStoString(code);
-        qDebug() << "headings: " << ret;
-        QStringList headings = ret.split("|");
-        if (headings.count() >= 2)
-        {
-            QString h1, h2;
-            h1 = headings.at(0);
-            h2 = headings.at(1);
-            if (h1 != data->originalTitle)
-            {
-                stateTitle = h1;
-                qDebug() << "state title now: " << h1;
-            }
-            else if (h2 != data->originalTitle)
-            {
-                stateTitle = h2;
-                qDebug() << "state title now: " << h2;
-            }
-        }
-    }
-
     //keeping track of lastLocalUrl
     if (linkType(data->originalUrl, url) != LINK_EXTERNAL &&
         locationInScope(
@@ -110,6 +83,40 @@ void Modeler::recurse(
     }
 
     int stateId = 0;
+
+    code = "document.title";
+    QString stateTitle = MyString::truncate(browser->JStoString(code));
+
+    if ((stateTitle == data->originalTitle) && (data->counter > 0))
+    {
+        code = "getMetaDescriptionContent()";
+        QString ret = browser->JStoString(code);
+        if (!ret.isEmpty())
+        {
+            stateTitle = MyString::truncate(ret);
+        }
+        else
+        {
+            code = "firstHeadings()";
+            QString ret = browser->JStoString(code);
+
+            QStringList headings = ret.split("|");
+            if (headings.count() >= 2)
+            {
+                QString h1, h2;
+                h1 = MyString::truncate(headings.at(0));
+                h2 = MyString::truncate(headings.at(1));
+                if ((h1 != data->originalTitle) && !h1.isEmpty())
+                {
+                    stateTitle = h1;
+                }
+                else if ((h2 != data->originalTitle) && (!h2.isEmpty()))
+                {
+                    stateTitle = h2;
+                }
+            }
+        }
+    }
 
     //arrows to known states
     if (data->states.contains(state))
