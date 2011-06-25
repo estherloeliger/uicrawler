@@ -14,9 +14,5 @@ void PopupListWidget::keyPressEvent(QKeyEvent *e)
         hide();
         return;
     }
-    /*else if (e->key() == Qt::Key_Enter)
-    {
-
-    }*/
     QListWidget::keyPressEvent(e);
 }

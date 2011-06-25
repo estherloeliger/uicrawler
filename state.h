@@ -15,6 +15,7 @@ public:
                      ( s.title == title ) &&
                      ( s.body == body ));
     }
+    QString toString();
 };
 
 #endif // STATE_H

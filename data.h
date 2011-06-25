@@ -41,6 +41,11 @@ public:
 
     int counter, idCounter, affordanceCounter, actionCounter, abstractCounter;
     bool skipOutOfScopeUrls;
+
+private:
+    void applyLine(const QString &key, const QString &value);
+    QString escapeString(const QString &s);
+    QString unescapeString(const QString &s);
 };
 
 #endif // DATA_H

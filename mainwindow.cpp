@@ -27,6 +27,7 @@ MainWindow::MainWindow() : stopFlag(false), busyFlag(false)
     updateBlackWhitelists();
 
     skipOutOfScopeUrls = settings->value("skipOutOfScopeUrls", true).toBool();
+    modelAndRender = settings->value("modelAndRender", false).toBool();
 
     QString pathDefault;
 #ifdef Q_WS_WIN
@@ -237,6 +238,7 @@ MainWindow::~MainWindow()
     settings->setValue("whitelistString", whitelistStringVariant);
     settings->setValue("lastOpenedFile", lastOpenedFileVariant);
     settings->setValue("skipOutOfScopeUrls", skipOutOfScopeUrls);
+    settings->setValue("modelAndRender", modelAndRender);
     delete settings;
 }
 
@@ -390,21 +392,19 @@ void MainWindow::model()
     dotWidgetPullback->setText(MyString::dataToPullbackDotString(&data));
 
     filterWidget->refreshAffordances(data.affordanceEdges);
-    logWidget->push("=== visualizing affordances ===\n");
-    visualizeAffordances();
     filterWidget->refreshActions(data.actionEdges);
-    logWidget->push("=== visualizing actions ===\n");
-    visualizeActions();
-    logWidget->push("=== visualizing abstract ===\n");
-    visualizeAbstract();
 
-    logWidget->push("=== refreshing mappings affordances -> abstract ===\n");
     mappingWidgetAffordance->refresh();
-
-    logWidget->push("=== refreshing mappings actions -> abstract ===\n");
     mappingWidgetAction->refresh();
 
-    logWidget->push("=== refreshing pullback ===\n");
+    if(true)//modelAndRender)
+    {
+        visualizeAffordances();
+        visualizeActions();
+        visualizeAbstract();
+    }
+
+    logWidget->push("===constructing and rendering pullback===");
     graphWidgetPullback->refresh();
 
     graphWidgetAffordances->setFocus();
@@ -417,25 +417,31 @@ void MainWindow::apply()
     mappingWidgetAffordance->applyChanges();
     mappingWidgetAction->applyChanges();
 
-    graphWidgetAffordances->refresh();
-    graphWidgetActions->refresh();
-    graphWidgetAbstract->refresh();
+    visualizeAffordances();
+    visualizeActions();
+    visualizeAbstract();
+
+    logWidget->push("===constructing and rendering pullback===");
     graphWidgetPullback->refresh();
+
     graphWidgetAffordances->setFocus();
 }
 
 void MainWindow::visualizeAffordances()
 {
+    logWidget->push("===rendering affordance graph===");
     graphWidgetAffordances->refresh();
 }
 
 void MainWindow::visualizeActions()
 {
+    logWidget->push("===rendering action graph===");
     graphWidgetActions->refresh();
 }
 
 void MainWindow::visualizeAbstract()
 {
+    logWidget->push("===rendering abstract graph===");
     graphWidgetAbstract->refresh();
 }
 

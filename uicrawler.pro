@@ -27,7 +27,8 @@ SOURCES += main.cpp\
     arrow.cpp \
     mappingwidget.cpp \
     popuplistwidget.cpp \
-    data.cpp
+    data.cpp \
+    state.cpp
 
 HEADERS  += mainwindow.h \
     logwidget.h \

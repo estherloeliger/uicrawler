@@ -85,10 +85,12 @@ QString Arrow::toString()
     s += "\"]\n";
     return s;
 }
+
 void Arrow::setFlag(int flagP)
 {
     flags |= flagP;
 }
+
 void Arrow::setFlags(int flagsP)
 {
     flags = flagsP;

@@ -1,25 +1,41 @@
 #include "mappingwidget.h"
 #include "data.h"
 #include "popuplistwidget.h"
-#include <QTreeWidget>
 #include <QtGui>
 
 MappingWidget::MappingWidget(QWidget *parent, const QString &title, Data *dataP, int typeP) :
     QDockWidget(title, parent), data(dataP), type(typeP)
 {
-    treeWidget = new QTreeWidget(this);
-    treeWidget->setColumnCount(2);
-    treeWidget->setAlternatingRowColors(true);
+    stateTree = new QTreeWidget(this);
+    stateTree->setColumnCount(2);
+    stateTree->setAlternatingRowColors(true);
 
-    QStringList headerLabels;
-    headerLabels.append("From");
-    headerLabels.append("To");
-    treeWidget->setHeaderLabels(headerLabels);
+    arrowTree = new QTreeWidget(this);
+    arrowTree->setColumnCount(2);
+    arrowTree->setAlternatingRowColors(true);
 
-    setWidget(treeWidget);
+    QStringList stateHeaderLabels;
+    stateHeaderLabels.append("Source node");
+    stateHeaderLabels.append("Target node");
+    stateTree->setHeaderLabels(stateHeaderLabels);
+    QStringList arrowHeaderLabels;
+    arrowHeaderLabels.append("Source edge");
+    arrowHeaderLabels.append("Target edge");
+    arrowTree->setHeaderLabels(arrowHeaderLabels);
 
-    connect(treeWidget, SIGNAL(itemDoubleClicked (QTreeWidgetItem*,int)), this, SLOT(clickHandler())); //double click
-    connect(treeWidget, SIGNAL(itemActivated(QTreeWidgetItem*,int)), this, SLOT(clickHandler())); //e.g. enter pressed
+    QGridLayout *layout = new QGridLayout();
+
+    layout->addWidget(stateTree, 0, 0);
+    layout->addWidget(arrowTree, 1, 0);
+
+    QWidget *wi = new QWidget;
+    wi->setLayout(layout);
+
+    setWidget(wi);
+    connect(arrowTree, SIGNAL(itemDoubleClicked (QTreeWidgetItem*,int)), this, SLOT(clickHandler(QTreeWidgetItem*))); //double click
+    connect(arrowTree, SIGNAL(itemActivated(QTreeWidgetItem*,int)), this, SLOT(clickHandler(QTreeWidgetItem*))); //e.g. enter pressed
+    connect(stateTree, SIGNAL(itemDoubleClicked (QTreeWidgetItem*,int)), this, SLOT(clickHandler(QTreeWidgetItem*))); //double click
+    connect(stateTree, SIGNAL(itemActivated(QTreeWidgetItem*,int)), this, SLOT(clickHandler(QTreeWidgetItem*))); //e.g. enter pressed
 
     listWidget = new PopupListWidget(this);
     listWidget->setWindowFlags(Qt::Popup);
@@ -28,17 +44,20 @@ MappingWidget::MappingWidget(QWidget *parent, const QString &title, Data *dataP,
     noTargetString = "---";
 }
 
-void MappingWidget::clickHandler()
+void MappingWidget::clickHandler(QTreeWidgetItem* item)
 {
-    QTreeWidgetItem *item = treeWidget->currentItem();
+    QTreeWidget *tree = item->treeWidget();
+    QStringList allTargetStrings;
+    bool isArrowItem = item->text(0).contains("->");
+    allTargetStrings = isArrowItem ? allArrowTargetStrings : allStateTargetStrings;
 
     QRect itemRect, boxRect;
-    itemRect = treeWidget->visualItemRect(item);
+    itemRect = tree->visualItemRect(item);
 
-    int col1Width = treeWidget->columnWidth(0);
+    int col1Width = tree->columnWidth(0);
     QPoint bottomLeft = QPoint(itemRect.left() + col1Width, itemRect.bottom());
 
-    boxRect = QRect(treeWidget->mapToGlobal(bottomLeft), QSize(itemRect.width() - col1Width, 200));
+    boxRect = QRect(tree->mapToGlobal(bottomLeft), QSize(itemRect.width() - col1Width, 200));
 
     QString source, destination;
     source = item->text(0);
@@ -53,7 +72,14 @@ void MappingWidget::clickHandler()
     int itemsCount = allTargetStrings.count();
     for (int i = 0; i < itemsCount; i++)
     {
-        listWidget->addItem(allTargetStrings.at(i));
+        if(isArrowItem)
+        {
+            listWidget->addItem(allTargetStrings.at(i));
+        }
+        else
+        {
+            listWidget->addItem(allTargetStrings.at(i));
+        }
     }
 
     listWidget->setGeometry(boxRect);
@@ -65,27 +91,77 @@ void MappingWidget::clickHandler()
 
 void MappingWidget::applyChanges()
 {
-    QVector<QPair<Arrow, Arrow> > *vp;
+    QVector<QPair<Arrow, Arrow> > *vpa;
+    QVector<QPair<State, State> > *vps;
 
     switch (type)
     {
     case MAPPING_TYPE_AFFORDANCE:
-        vp = &data->mapAffordanceToAbstractEdges;
+        vpa = &data->mapAffordanceToAbstractEdges;
+        vps = &data->mapAffordanceToAbstractNodes;
         break;
     case MAPPING_TYPE_ACTION:
-        vp = &data->mapActionToAbstractEdges;
+        vpa = &data->mapActionToAbstractEdges;
+        vps = &data->mapActionToAbstractNodes;
         break;
     default:
         return;
     }
+    vpa->clear();
+    vps->clear();
 
-    vp->clear();
-
-    int count = treeWidget->topLevelItemCount();
+    int count = stateTree->topLevelItemCount();
     QString s, t;
     for (int i = 0; i < count; i++)
     {
-        QTreeWidgetItem *item = treeWidget->topLevelItem(i);
+        QTreeWidgetItem *item = stateTree->topLevelItem(i);
+
+        s = item->text(0);
+        t = item->text(1);
+
+        if (t == this->noTargetString)
+            continue;
+
+        int idA, idB;
+
+        QRegExp rx("(\\d+)$");
+
+        int pos = -1;
+        if ((pos = rx.indexIn(s)) != -1)
+        {
+            QString no = rx.cap(1);
+            idA = no.toInt();
+        }
+        else
+            continue;
+
+        if ((pos = rx.indexIn(t)) != -1)
+        {
+            QString no = rx.cap(1);
+            idB = no.toInt();
+        }
+        else
+            continue;
+
+        State a, b;
+        if (stateMap.contains(idA) && stateMap.contains(idB))
+        {
+            a = stateMap[idA];
+            b = stateMap[idB];
+        }
+        else
+        {
+            continue;
+        }
+
+        vps->push_back(qMakePair(a, b));
+    }
+
+
+    count = arrowTree->topLevelItemCount();
+    for (int i = 0; i < count; i++)
+    {
+        QTreeWidgetItem *item = arrowTree->topLevelItem(i);
 
         s = item->text(0);
         t = item->text(1);
@@ -125,36 +201,77 @@ void MappingWidget::applyChanges()
             continue;
         }
 
-        vp->push_back(qMakePair(a, b));
+        vpa->push_back(qMakePair(a, b));
     }
 }
 
 void MappingWidget::refresh()
 {
+    stateMap.clear();
     arrowMap.clear();
-    allTargetStrings.clear();
-    treeWidget->clear();
+    allArrowTargetStrings.clear();
+    allStateTargetStrings.clear();
+    arrowTree->clear();
+    stateTree->clear();
 
-    QVector<QPair<Arrow, Arrow> > v;
+    QVector<QPair<Arrow, Arrow> > va;
+    QVector<QPair<State, State> > vs;
     switch (type)
     {
     case MAPPING_TYPE_AFFORDANCE:
-        v = data->mapAffordanceToAbstractEdges;
+        va = data->mapAffordanceToAbstractEdges;
+        vs = data->mapAffordanceToAbstractNodes;
         break;
     case MAPPING_TYPE_ACTION:
-        v = data->mapActionToAbstractEdges;
+        va = data->mapActionToAbstractEdges;
+        vs = data->mapActionToAbstractNodes;
         break;
     default:
         break;
     }
 
-    allTargetStrings.append(noTargetString);
+    allStateTargetStrings.append(noTargetString);
 
-    QVectorIterator<QPair<Arrow, Arrow> > i(v);
+    QVectorIterator<QPair<State, State> > is(vs);
 
-    while (i.hasNext())
+    while (is.hasNext())
     {
-        QPair<Arrow, Arrow> p = i.next();
+        QPair<State, State> p = is.next();
+
+        State a, b;
+        a = p.first;
+        b = p.second;
+
+        QString s, t;
+        s = a.toString() + " #" + QString::number(a.id);
+        t = b.toString() + " #" + QString::number(b.id);
+        s = s.replace("\n", "");
+        t = t.replace("\n", "");
+        s = s.replace("\r", "");
+        t = t.replace("\r", "");
+
+        QStringList list;
+        list.append(s);
+        list.append(t);
+
+        allStateTargetStrings.append(t);
+
+        stateMap.insert(a.id, a);
+        stateMap.insert(b.id, b);
+
+        QTreeWidgetItem *item = new QTreeWidgetItem(list);
+
+        stateTree->insertTopLevelItem(0, item);
+    }
+
+
+    allArrowTargetStrings.append(noTargetString);
+
+    QVectorIterator<QPair<Arrow, Arrow> > ia(va);
+
+    while (ia.hasNext())
+    {
+        QPair<Arrow, Arrow> p = ia.next();
 
         Arrow a, b;
         a = p.first;
@@ -172,23 +289,23 @@ void MappingWidget::refresh()
         list.append(s);
         list.append(t);
 
-        allTargetStrings.append(t);
+        allArrowTargetStrings.append(t);
 
         arrowMap.insert(a.id, a);
         arrowMap.insert(b.id, b);
 
         QTreeWidgetItem *item = new QTreeWidgetItem(list);
 
-        treeWidget->insertTopLevelItem(0, item);
+        arrowTree->insertTopLevelItem(0, item);
     }
 }
 
 void MappingWidget::popupSelectionHandler(QListWidgetItem *item)
 {
     QString selection = item->text();
+    QTreeWidgetItem *treeItem = (selection.contains("->")) ? arrowTree->currentItem() : stateTree->currentItem();
     if (!selection.isEmpty())
     {
-        QTreeWidgetItem *treeItem = treeWidget->currentItem();
         treeItem->setText(1, item->text());
     }
     listWidget->hide();

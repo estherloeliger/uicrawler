@@ -100,5 +100,5 @@ private:
 
     QHash<int, QString> nodeNames, linkNames;
 
-    bool stopFlag, busyFlag, skipOutOfScopeUrls;
+    bool stopFlag, busyFlag, skipOutOfScopeUrls, modelAndRender;
 };
