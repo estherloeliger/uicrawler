@@ -615,88 +615,12 @@ void MainWindow::save()
 
 QString MainWindow::machineState()
 {
-    QString s, url, affordances, actions, abstract, mappingAffordance, mappingAction, pullback;
-
-    url = locationEdit->text();
-    affordances = dotWidgetAffordances->text();
-    actions = dotWidgetActions->text();
-    abstract = dotWidgetAbstract->text();
-    //mappingAffordance = dotWidgetMappingAffordance->text();
-    //mappingAction = dotWidgetMappingAction->text();
-    pullback = dotWidgetPullback->text();
-    affordances.replace("\n", "__RETURN__");
-    actions.replace("\n", "__RETURN__");
-    abstract.replace("\n", "__RETURN__");
-    mappingAffordance.replace("\n", "__RETURN__");
-    mappingAction.replace("\n", "__RETURN__");
-    pullback.replace("\n", "__RETURN__");
-
-    s += url;
-    s += "\n";
-    s += affordances;
-    s += "\n";
-    s += actions;
-    s += "\n";
-    s += abstract;
-    s += "\n";
-    s += mappingAffordance;
-    s += "\n";
-    s += mappingAction;
-    s += "\n";
-    s += pullback;
-    s += "\n";
-
-    return s;
+    qDebug() << "data serialization: " << data.toString();
+    return data.toString();
 }
 
 void MainWindow::setMachineState(const QString &s)
 {
-    QStringList list = s.split("\n");
-    if (list.count() < 4)
-    {
-        qDebug() << "Invalid machine state:\n" << s;
-        return;
-    }
-
-    QString url, affordances, actions, abstract, mappingAffordance, mappingAction, pullback;
-
-    url = list.at(0);
-    affordances = list.at(1);
-    actions = list.at(2);
-    abstract = list.at(3);
-    mappingAffordance = list.at(4);
-    mappingAction = list.at(5);
-    pullback = list.at(6);
-
-    affordances = affordances.replace("__RETURN__", "\n");
-    actions = actions.replace("__RETURN__", "\n");
-    abstract = abstract.replace("__RETURN__", "\n");
-    mappingAffordance = mappingAffordance.replace("__RETURN__", "\n");
-    mappingAction = mappingAction.replace("__RETURN__", "\n");
-    pullback = pullback.replace("__RETURN__", "\n");
-
-    locationEdit->setText(url);
-
-    WebPage *webPage = new WebPage(this);
-    browser->setPage((QWebPage *) webPage);
-    browser->load(url);
-    dotWidgetAffordances->setText(affordances);
-    dotWidgetActions->setText(actions);
-    dotWidgetAbstract->setText(abstract);
-    dotWidgetPullback->setText(pullback);
-
-    //update graphical views
-    apply();
-
-    //update filter widget
-    filterWidget->refreshAffordances(affordances);
-    filterWidget->refreshActions(actions);
-
-    //update data structure
-    QVector<Arrow> affordanceArrows, actionArrows;
-    filterWidget->dotToArrows(affordances, affordanceArrows);
-    filterWidget->dotToArrows(actions, actionArrows);
-
-    data.affordanceEdges = affordanceArrows;
-    data.actionEdges = actionArrows;
+    data.applyString(s);
+    qDebug() << "data after setting: " << data.toString();
 }
